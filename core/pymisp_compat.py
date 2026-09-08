@@ -52,8 +52,13 @@ def _install() -> None:
     MISPGalaxyCluster.from_dict = from_dict
 
 
-# True when the installed PyMISP needed this. Applied on import, so anything
-# that reads it for a log line has to do so afterwards.
-installed = _refuses_server_clusters()
-if installed:
-    _install()
+# True once this turned out to be needed, for whoever wants to say so in a log.
+installed = False
+
+
+def apply() -> None:
+    """Patch PyMISP if this release refuses the clusters. Safe to call twice."""
+    global installed
+    if not installed and _refuses_server_clusters():
+        _install()
+        installed = True

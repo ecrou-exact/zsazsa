@@ -28,7 +28,7 @@ if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
 import config
-from core import pymisp_compat  # noqa: F401 - patches PyMISP on import
+from core import pymisp_compat
 from pymisp import PyMISP
 
 REQ_TAGS = (config.TAG_PIR, config.TAG_GIR)
@@ -46,6 +46,7 @@ UUID_RE = re.compile(
 
 
 def _misp() -> PyMISP:
+    pymisp_compat.apply()
     return PyMISP(
         config.MISP_WEBAPP_URL,
         config.MISP_WEBAPP_KEY,

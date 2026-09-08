@@ -13,7 +13,9 @@ import unittest
 from pymisp import MISPEvent, MISPGalaxyCluster
 from pymisp.exceptions import NewGalaxyClusterError
 
-from core import pymisp_compat  # importing it is what applies the shim
+from core import pymisp_compat
+
+pymisp_compat.apply()
 
 
 def _server_cluster(**over):
