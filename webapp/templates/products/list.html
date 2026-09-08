@@ -37,6 +37,9 @@
 
 {% if events %}
 {% for ptype, items in grouped.items() %}
+{# Products that keep no event report leave the column out rather than showing
+   a nought that means nothing. #}
+{% set has_reports = items | rejectattr('report_count', 'none') | list | length > 0 %}
 <div class="card content-card mb-4">
   <div class="card-header">
     <i class="fas fa-folder-open me-2"></i>{{ ptype }}
@@ -49,7 +52,7 @@
           <th style="width:110px">Date</th>
           <th>Title</th>
           <th>Tags</th>
-          <th class="text-end">Reports</th>
+          {% if has_reports %}<th class="text-end">Reports</th>{% endif %}
           <th class="text-end">MISP event</th>
         </tr>
       </thead>
@@ -65,7 +68,7 @@
             <span class="badge text-bg-light me-1">{{ t }}</span>
             {% endfor %}
           </td>
-          <td class="text-end text-muted small">{{ ev.report_count }}</td>
+          {% if has_reports %}<td class="text-end text-muted small">{{ ev.report_count }}</td>{% endif %}
           <td class="text-end">
             <a href="{{ ev.misp_url }}" target="_blank" rel="noopener" class="btn btn-xs btn-outline-secondary" title="Open in MISP">
               <i class="fas fa-up-right-from-square"></i>

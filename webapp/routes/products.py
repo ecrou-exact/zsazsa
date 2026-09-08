@@ -34,6 +34,11 @@ def _product_type_from_tags(tags):
     return ""
 
 
+# An indicator feed keeps a query, not a write-up, so it never carries an event
+# report: counting them for one says nothing and costs a fetch per row.
+_PRODUCTS_WITHOUT_REPORTS = {"Indicator feed"}
+
+
 def _non_feedback_report_count(misp, event) -> int:
     reports = list(getattr(event, "event_reports", []) or [])
     if not reports:
@@ -76,7 +81,8 @@ def _list_product_events(type_filter: str | None, linked_pir: str | None):
             "date": str(e.date) if e.date else '',
             "tags": ev_tags,
             "product_type": ptype,
-            "report_count": _non_feedback_report_count(misp, e),
+            "report_count": None if ptype in _PRODUCTS_WITHOUT_REPORTS
+            else _non_feedback_report_count(misp, e),
             "misp_url": f"{config.MISP_WEBAPP_URL}/events/view/{e.uuid}",
             "app_url": product_detail_url(ptype, e.uuid, fallback_url=f"{config.MISP_WEBAPP_URL}/events/view/{e.uuid}"),
         })

@@ -194,6 +194,7 @@
                     {% if run.result.message %}{{ run.result.message }}
                     {% elif run.result.total_events is defined %}
                       {{ run.result.total_events }} events · {{ run.result.product_created }} products · {{ run.result.not_relevant }} skipped
+                      {% if run.result.feed_caches_refreshed %} · {{ run.result.feed_caches_refreshed }} feed cache(s){% endif %}
                     {% endif %}
                     {% if decisions %}<span class="text-muted ms-1" style="font-size:.72rem;"><i class="fas fa-chevron-down"></i></span>{% endif %}
                   {% else %}-{% endif %}

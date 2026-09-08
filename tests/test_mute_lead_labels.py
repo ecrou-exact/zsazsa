@@ -9,7 +9,7 @@ preview set them smaller and lighter than the sentence they introduce.
 
 import unittest
 
-from webapp.utils import md_to_html, mute_lead_labels
+from webapp.utils import md_to_html, md_to_html_inline, mute_lead_labels
 
 
 def _render(text):
@@ -47,6 +47,32 @@ class MuteLeadLabels(unittest.TestCase):
     def test_heading_is_not_muted(self):
         html = _render("## What happened: something")
         self.assertNotIn("pretext", html)
+
+
+class RawHtml(unittest.TestCase):
+    """Story text, advisory fields and write-ups come from ingested articles and
+    from the model, and the md filters mark their output safe. HTML in that text
+    has to arrive as text, not as markup in the analyst's page."""
+
+    def test_html_in_the_source_is_escaped(self):
+        # The attribute names survive as text, which is inert; what matters is
+        # that no tag is opened.
+        for text, tag in [("<script>alert(1)</script>", "<script"),
+                          ("<img src=x onerror=alert(1)>", "<img"),
+                          ("before <b onmouseover=alert(1)>hover</b> after", "<b ")]:
+            with self.subTest(text=text):
+                html = md_to_html(text)
+                self.assertNotIn(tag, html)
+                self.assertIn("&lt;", html)
+
+    def test_html_is_escaped_inline_too(self):
+        self.assertNotIn("<script", md_to_html_inline("<script>alert(1)</script>"))
+
+    def test_markdown_itself_still_renders(self):
+        html = md_to_html("**bold** and [link](https://example.org)\nsecond line")
+        self.assertIn("<strong>bold</strong>", html)
+        self.assertIn('<a href="https://example.org">link</a>', html)
+        self.assertIn("<br />", html)
 
 
 if __name__ == "__main__":

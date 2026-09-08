@@ -1,0 +1,206 @@
+{% from "_macros.html" import tag_input, galaxy_multiselect %}
+<style>
+  .qf-section {
+    font-size: .68rem; font-weight: 700; letter-spacing: .06em; text-transform: uppercase;
+    color: var(--text-muted); display: flex; align-items: center; gap: .5rem; margin: 1.1rem 0 .6rem;
+  }
+  .qf-section:first-child { margin-top: 0; }
+  .qf-row + .qf-section { margin-top: 1.6rem; }
+  .qf-section .qf-rule { flex: 1; height: 1px; background: var(--border-faint); }
+  .qf-field-label { font-size: .8rem; font-weight: 600; margin-bottom: .3rem; }
+  .qf-hint { font-size: .72rem; color: var(--text-muted); }
+  .qf-row { display: flex; align-items: center; gap: .6rem; flex-wrap: wrap; padding: .2rem 0; }
+  .qf-seg-label { font-size: .8rem; font-weight: 600; width: 10.5rem; flex-shrink: 0; }
+  .qf-opt-label { font-size: .8rem; color: var(--text-muted); }
+  /* Include / exclude split control wrapping the tag_input chips */
+  .qf-inex { border: 1px solid var(--border-light); border-radius: var(--border-radius); }
+  .qf-inex-row { display: flex; gap: .5rem; padding: .45rem .6rem; align-items: flex-start; }
+  .qf-inex-row + .qf-inex-row { border-top: 1px solid var(--border-faint); }
+  .qf-inex-row.inc { border-left: 3px solid var(--accent-green); }
+  .qf-inex-row.exc { border-left: 3px solid var(--accent-orange); }
+  .qf-inex-row [data-ti-field] { flex: 1; min-width: 0; }
+  .qf-inex-tag { font-weight: 700; width: 1rem; text-align: center; flex-shrink: 0; padding-top: .3rem; }
+  .qf-inex-row.inc .qf-inex-tag { color: var(--accent-green); }
+  .qf-inex-row.exc .qf-inex-tag { color: var(--accent-orange); }
+</style>
+{# The query builder, shared by a new feed and a saved one so both edit exactly
+   the same filters. Everything in here makes up the query, which is how the
+   script tells a filter change from an edit to the feed's own fields. The
+   server picker is drawn elsewhere on the page and carries the same marker. #}
+<div data-query-part>
+  <div class="card content-card mb-4">
+    <div class="card-header d-flex align-items-center justify-content-between">
+      {% if query_summary %}
+      {# The whole title opens the editor; the button beside it does the same. #}
+      <button class="btn btn-link p-0 text-decoration-none text-reset fw-semibold text-start" type="button"
+              data-bs-toggle="collapse" data-bs-target="#query-body" aria-controls="query-body">
+        <i class="fas fa-filter me-2"></i>Query
+        <span class="text-muted fw-normal ms-2" style="font-size:.78rem;">
+          {% for part in query_summary %}<span class="font-monospace">{{ part }}</span>{% if not loop.last %} <span class="text-muted">&middot;</span> {% endif %}{% endfor %}
+        </span>
+      </button>
+      {% else %}
+      <span><i class="fas fa-filter me-2"></i>Query</span>
+      {% endif %}
+      <span class="d-flex align-items-center gap-2">
+        {% if query_summary %}
+        <button class="btn btn-xs btn-outline-secondary" type="button"
+                data-bs-toggle="collapse" data-bs-target="#query-body">
+          <i class="fas fa-sliders me-1"></i>Edit query
+        </button>
+        {% endif %}
+        {% if not feed.id %}
+        <a href="{{ url_for('indicator_feed.new') }}" class="btn btn-xs btn-link text-muted p-0"><i class="fas fa-eraser me-1"></i>Clear all</a>
+        {% endif %}
+      </span>
+    </div>
+    <div class="card-body {{ 'collapse' if query_summary }}" id="query-body">
+
+      <div class="qf-section"><i class="fas fa-fingerprint"></i> Indicators <span class="qf-rule"></span></div>
+
+      <div class="mb-3">
+        <div class="qf-field-label">Attribute types</div>
+        {{ galaxy_multiselect('types', values=filters.types, items=attribute_types, dom_id='types') }}
+      </div>
+
+      <div class="row g-3">
+        <div class="col-md-6">
+          <div class="qf-field-label">Tags <span class="qf-hint fw-normal">(event or attribute)</span></div>
+          <div class="qf-inex">
+            <div class="qf-inex-row inc">
+              <span class="qf-inex-tag" title="Must have">&plus;</span>
+              {{ tag_input('tags_include', values=filters.tags_include, datalist_id='dl-tags_include', placeholder='must have…') }}
+            </div>
+            <div class="qf-inex-row exc">
+              <span class="qf-inex-tag" title="Must not have">&minus;</span>
+              {{ tag_input('tags_exclude', values=filters.tags_exclude, datalist_id='dl-tags_exclude', placeholder='must not have…') }}
+            </div>
+          </div>
+        </div>
+        <div class="col-md-6">
+          <div class="qf-field-label">Organisations</div>
+          <div class="qf-inex">
+            <div class="qf-inex-row inc">
+              <span class="qf-inex-tag" title="From">&plus;</span>
+              {{ tag_input('orgs_include', values=filters.orgs_include, datalist_id='dl-orgs_include', placeholder='from…') }}
+            </div>
+            <div class="qf-inex-row exc">
+              <span class="qf-inex-tag" title="Not from">&minus;</span>
+              {{ tag_input('orgs_exclude', values=filters.orgs_exclude, datalist_id='dl-orgs_exclude', placeholder='not from…') }}
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="qf-section"><i class="fas fa-clock"></i> Time <span class="qf-rule"></span></div>
+
+      <div class="qf-row" data-time-row>
+        <span class="qf-seg-label">Attribute last change</span>
+        <div class="btn-group btn-group-sm" role="group">
+          <input type="radio" class="btn-check" name="attr_last" id="last-none" value=""
+                 {{ 'checked' if not filters.attr_last }} autocomplete="off">
+          <label class="btn btn-outline-secondary" for="last-none">Any</label>
+          {% for value, label in attr_ranges %}
+          <input type="radio" class="btn-check" name="attr_last" id="last-{{ value }}" value="{{ value }}"
+                 {{ 'checked' if filters.attr_last == value }} autocomplete="off">
+          <label class="btn btn-outline-secondary" for="last-{{ value }}">{{ label }}</label>
+          {% endfor %}
+        </div>
+        <span class="d-inline-flex align-items-center gap-2 flex-nowrap">
+        <span class="qf-hint">or</span>
+        <input type="date" name="attr_after" class="form-control form-control-sm" style="max-width:9.5rem;" value="{{ filters.attr_after }}" title="After">
+        <span class="qf-hint">→</span>
+        <input type="date" name="attr_before" class="form-control form-control-sm" style="max-width:9.5rem;" value="{{ filters.attr_before }}" title="Before">
+        </span>
+      </div>
+
+      <div class="qf-row" data-time-row>
+        <span class="qf-seg-label">Event date</span>
+        <div class="btn-group btn-group-sm" role="group">
+          <input type="radio" class="btn-check" name="event_last" id="elast-none" value=""
+                 {{ 'checked' if not filters.event_last }} autocomplete="off">
+          <label class="btn btn-outline-secondary" for="elast-none">Any</label>
+          {% for value, label in event_ranges %}
+          <input type="radio" class="btn-check" name="event_last" id="elast-{{ value }}" value="{{ value }}"
+                 {{ 'checked' if filters.event_last == value }} autocomplete="off">
+          <label class="btn btn-outline-secondary" for="elast-{{ value }}">{{ label }}</label>
+          {% endfor %}
+        </div>
+        <span class="d-inline-flex align-items-center gap-2 flex-nowrap">
+        <span class="qf-hint">or</span>
+        <input type="date" name="event_after" class="form-control form-control-sm" style="max-width:9.5rem;" value="{{ filters.event_after }}" title="After">
+        <span class="qf-hint">→</span>
+        <input type="date" name="event_before" class="form-control form-control-sm" style="max-width:9.5rem;" value="{{ filters.event_before }}" title="Before">
+        </span>
+      </div>
+
+      <div class="qf-section"><i class="fas fa-sliders"></i> Options <span class="qf-rule"></span></div>
+
+      <div class="qf-row">
+        <span class="qf-opt-label">to_ids</span>
+        <div class="btn-group btn-group-sm" role="group">
+          {% for choice in to_ids_choices %}
+          <input type="radio" class="btn-check" name="to_ids" id="toids-{{ choice }}" value="{{ choice }}"
+                 {{ 'checked' if filters.to_ids == choice }} autocomplete="off">
+          <label class="btn btn-outline-secondary" for="toids-{{ choice }}">{{ {'any': 'Any', 'yes': 'True', 'no': 'False'}[choice] }}</label>
+          {% endfor %}
+        </div>
+        <span class="qf-opt-label ms-2">Published</span>
+        <div class="btn-group btn-group-sm" role="group">
+          {% for choice in published_choices %}
+          <input type="radio" class="btn-check" name="published" id="pub-{{ choice }}" value="{{ choice }}"
+                 {{ 'checked' if filters.published == choice }} autocomplete="off">
+          <label class="btn btn-outline-secondary" for="pub-{{ choice }}">{{ {'any': 'Any', 'yes': 'Yes', 'no': 'No'}[choice] }}</label>
+          {% endfor %}
+        </div>
+        <span class="vr mx-1"></span>
+        <label class="d-inline-flex align-items-center gap-1 mb-0" style="font-size:.82rem;">
+          <input class="form-check-input mt-0" type="checkbox" name="enforce_warninglist" value="yes" id="enforce-wl"
+                 {{ 'checked' if filters.enforce_warninglist == 'yes' }}>
+          Exclude warninglist
+        </label>
+        <span class="vr mx-1"></span>
+        <span class="d-inline-flex align-items-center gap-2 flex-nowrap">
+        <span class="qf-opt-label">Limit</span>
+        <input type="number" name="limit" id="limit-input" class="form-control form-control-sm" style="max-width:6rem;"
+               min="1" max="{{ max_limit }}" value="{{ filters.limit }}">
+        </span>
+      </div>
+      <div id="limit-warning" class="form-text text-warning {{ 'd-none' if filters.limit <= 500 }}">
+        <i class="fas fa-triangle-exclamation me-1"></i>A limit above 500 (per server) can make the query very slow.
+      </div>
+      <div class="form-text">
+        <i class="fas fa-circle-info me-1"></i>The limit also applies to the downloads and to the public feed URL.
+        Add <code>truncate=off</code> to such a URL to get everything that matches instead.
+      </div>
+
+      <div class="mt-3">
+        <a class="btn btn-xs btn-link text-muted p-0" data-bs-toggle="collapse" href="#qf-advanced" role="button" aria-expanded="false">
+          <i class="fas fa-chevron-right me-1"></i>Advanced: specific events
+        </a>
+        <div class="collapse {{ 'show' if filters.events_include or filters.events_exclude }}" id="qf-advanced">
+          <div class="row g-3 mt-0">
+            <div class="col-md-6">
+              <div class="qf-field-label">Include event UUIDs</div>
+              {{ tag_input('events_include', values=filters.events_include, placeholder='Event UUID, then Enter') }}
+            </div>
+            <div class="col-md-6">
+              <div class="qf-field-label">Exclude event UUIDs</div>
+              {{ tag_input('events_exclude', values=filters.events_exclude, placeholder='Event UUID, then Enter') }}
+            </div>
+          </div>
+          <div class="qf-hint mt-1">Tip: use the &plus; / &minus; icons next to a result row to fill these.</div>
+        </div>
+      </div>
+
+      <div class="form-text mt-3">MISP cannot sort attribute search, so the table only sorts the fetched page. Use <strong>Show total</strong> on the results to see how many match. To sort across all of them, raise the limit to at least the total.</div>
+
+    </div>
+  </div>
+
+  {# Filled on demand by the /suggest endpoint; without these the tag inputs have
+     no autocomplete. #}
+  {% for field in ['orgs_include', 'orgs_exclude', 'tags_include', 'tags_exclude'] %}
+  <datalist id="dl-{{ field }}"></datalist>
+  {% endfor %}
+</div>

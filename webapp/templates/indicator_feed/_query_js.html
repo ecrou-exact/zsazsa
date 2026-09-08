@@ -1,0 +1,346 @@
+{# Behaviour for the query builder: tag inputs, autocomplete, the PyMISP
+   query preview, the count button and the client-side table sort. #}
+<script>
+// Chip-style add/remove for the org/tag/event pickers (shared tag_input behaviour).
+function tiRender(field) {
+  var display = document.getElementById('ti-display-' + field);
+  var store = document.getElementById('ti-store-' + field);
+  if (!display || !store) return;
+  display.innerHTML = '';
+  store.querySelectorAll('input[type="hidden"]').forEach(function(inp) {
+    var pill = document.createElement('span');
+    pill.className = 'tag-pill';
+    pill.appendChild(document.createTextNode(inp.value));
+    var btn = document.createElement('button');
+    btn.type = 'button';
+    btn.className = 'tag-pill-remove';
+    btn.textContent = '×';
+    btn.title = 'Remove';
+    btn.onclick = function() { inp.remove(); tiRender(field); queryChanged(); };
+    pill.appendChild(btn);
+    display.appendChild(pill);
+  });
+}
+function tiAdd(field) {
+  var text = document.getElementById('ti-text-' + field);
+  var store = document.getElementById('ti-store-' + field);
+  if (!text || !store) return;
+  var val = text.value.trim();
+  if (!val) return;
+  addChip(field, val);
+  text.value = '';
+  text.focus();
+}
+function addChip(field, value) {
+  var store = document.getElementById('ti-store-' + field);
+  if (!store || !value) return;
+  var existing = Array.from(store.querySelectorAll('input[type="hidden"]')).map(function(i){ return i.value; });
+  if (!existing.includes(value)) {
+    var h = document.createElement('input');
+    h.type = 'hidden'; h.name = field; h.value = value;
+    store.appendChild(h);
+    tiRender(field);
+    queryChanged();
+  }
+}
+// Anything that changes the query goes through here: the results on screen were
+// answered by the old one, and the PyMISP card has to follow along. The chips
+// are added and removed by script, which fires no input event of its own, so
+// they have to say so themselves.
+function queryChanged() {
+  markUnsaved();
+  refreshQuery();
+  var el = document.getElementById('results-stale');
+  if (el) el.classList.remove('d-none');
+}
+
+// Unsaved changes. Nothing on this page reaches MISP until Save, and Run search
+// reads the form without storing any of it. The guard in base.html does the
+// asking on the way out; this only answers whether anything is still unsaved,
+// and pushes that answer now rather than on DOMContentLoaded, because the guard
+// reads the list while the page is parsing and installs nothing on an empty one.
+var unsavedEdits = false;
+var savingFeed = false;
+function markUnsaved() { unsavedEdits = true; }
+(window.zsazsaUnsavedChecks = window.zsazsaUnsavedChecks || []).push(function() {
+  return unsavedEdits && !savingFeed;
+});
+
+// The PyMISP card is rendered by misp_store, from the same kwargs the search
+// runs on, so asking the server for it keeps the card and the query identical.
+// Rebuilding it here would be a second implementation of that mapping.
+var QUERY_URL = SCRIPT_ROOT + '/products/indicator-feed/pymisp-query';
+var queryTimer = null;
+function refreshQuery() {
+  var form = document.getElementById('indicator-form');
+  var el = document.getElementById('pymisp-query');
+  if (!form || !el) return;
+  clearTimeout(queryTimer);
+  queryTimer = setTimeout(function() {
+    fetch(QUERY_URL + '?' + new URLSearchParams(new FormData(form)))
+      .then(function(r) { return r.json(); })
+      .then(function(d) { if (d.query) el.textContent = d.query; })
+      .catch(function() {});
+  }, 250);
+}
+
+var SUGGEST_URL = SCRIPT_ROOT + '/products/indicator-feed/suggest';
+function attachAutocomplete(field, input) {
+  var dl = document.getElementById('dl-' + field);
+  if (!dl) return;
+  var timer = null;
+  input.addEventListener('input', function() {
+    clearTimeout(timer);
+    var q = input.value.trim();
+    timer = setTimeout(function() {
+      fetch(SUGGEST_URL + '?field=' + encodeURIComponent(field) + '&q=' + encodeURIComponent(q))
+        .then(function(r) { return r.json(); })
+        .then(function(items) {
+          dl.innerHTML = '';
+          (items || []).forEach(function(v) { var o = document.createElement('option'); o.value = v; dl.appendChild(o); });
+        }).catch(function() {});
+    }, 200);
+  });
+}
+
+document.addEventListener('DOMContentLoaded', function() {
+  document.querySelectorAll('[data-ti-field]').forEach(function(w) {
+    var f = w.dataset.tiField;
+    tiRender(f);
+    var t = document.getElementById('ti-text-' + f);
+    if (t) {
+      t.addEventListener('keydown', function(e) {
+        if (e.key === 'Enter') { e.preventDefault(); tiAdd(f); }
+      });
+      if (document.getElementById('dl-' + f)) attachAutocomplete(f, t);
+    }
+  });
+
+  // Live query preview on any filter change. The page arrives with the card
+  // already rendered, so there is nothing to fetch until something changes.
+  // Only the query fields count: the feed's name or TLP does not make the
+  // results on screen outdated, and neither does typing in a box that filters
+  // a pick-list, which carries no name and is never submitted. The query is in
+  // two places on the page, so the regions carry a marker rather than an id.
+  var form = document.getElementById('indicator-form');
+  document.querySelectorAll('[data-query-part]').forEach(function(part) {
+    part.addEventListener('input', function(e) { if (e.target.name) queryChanged(); });
+    part.addEventListener('change', function(e) { if (e.target.name) queryChanged(); });
+  });
+
+  // The feed's own fields are not part of the query, so they leave the results
+  // alone, but they are just as unsaved as the filters are.
+  if (form) {
+    form.addEventListener('input', function(e) { if (e.target.name) markUnsaved(); });
+    form.addEventListener('change', function(e) { if (e.target.name) markUnsaved(); });
+  }
+
+  // In a time row the quick range and the explicit from/to are alternatives, as
+  // the "or" between them says, and misp_store lets the quick range win. Nothing
+  // on screen showed that, so a date typed under a chosen range changed the
+  // query not at all. Setting either side now clears the other. Neither
+  // assignment fires an event of its own, so the change that started this is
+  // still the one that refreshes the query.
+  document.querySelectorAll('[data-time-row]').forEach(function(row) {
+    var any = row.querySelector('input[type="radio"][value=""]');
+    if (!any) return;
+    var dates = row.querySelectorAll('input[type="date"]');
+    dates.forEach(function(date) {
+      date.addEventListener('input', function() { if (date.value) any.checked = true; });
+    });
+    row.querySelectorAll('input[type="radio"]').forEach(function(radio) {
+      radio.addEventListener('change', function() {
+        if (radio.value) dates.forEach(function(date) { date.value = ''; });
+      });
+    });
+  });
+
+  // The interval only applies when caching is on.
+  var cacheBox = document.getElementById('cache-enabled');
+  var cacheInterval = document.getElementById('cache-interval');
+  if (cacheBox && cacheInterval) {
+    cacheBox.addEventListener('change', function() { cacheInterval.disabled = !cacheBox.checked; });
+  }
+
+  // Slow-query warning for large limits.
+  var limit = document.getElementById('limit-input');
+  var warn = document.getElementById('limit-warning');
+  if (limit && warn) {
+    limit.addEventListener('input', function() {
+      warn.classList.toggle('d-none', !(parseInt(limit.value, 10) > 500));
+    });
+  }
+
+  // Copy the PyMISP query.
+  var copyBtn = document.getElementById('copy-query');
+  var queryEl = document.getElementById('pymisp-query');
+  if (copyBtn && queryEl) {
+    copyBtn.addEventListener('click', function() {
+      copyText(queryEl.textContent).then(function() {
+        var orig = copyBtn.innerHTML;
+        copyBtn.innerHTML = '<i class="fas fa-check me-1"></i>Copied';
+        setTimeout(function() { copyBtn.innerHTML = orig; }, 1500);
+      }).catch(function() {});
+    });
+  }
+
+  // Clipboard copy that also works on non-HTTPS origins (e.g. a LAN IP), where
+  // navigator.clipboard is unavailable; falls back to a temporary textarea.
+  function copyText(text) {
+    if (navigator.clipboard && window.isSecureContext) {
+      return navigator.clipboard.writeText(text);
+    }
+    return new Promise(function(resolve, reject) {
+      var ta = document.createElement('textarea');
+      ta.value = text;
+      ta.style.position = 'fixed';
+      ta.style.opacity = '0';
+      document.body.appendChild(ta);
+      ta.focus();
+      ta.select();
+      var ok = false;
+      try { ok = document.execCommand('copy'); } catch (e) { ok = false; }
+      document.body.removeChild(ta);
+      ok ? resolve() : reject();
+    });
+  }
+  function flashCopied(btn) {
+    var i = btn.querySelector('i');
+    if (!i) return;
+    var prev = i.className;
+    i.className = 'fas fa-check';
+    setTimeout(function() { i.className = prev; }, 1200);
+  }
+
+  // Copy a saved feed's public URL.
+  document.querySelectorAll('.copy-url').forEach(function(btn) {
+    btn.addEventListener('click', function() {
+      var inp = btn.parentElement.querySelector('.public-url');
+      if (!inp) return;
+      copyText(inp.value).then(function() { flashCopied(btn); }).catch(function() {});
+    });
+  });
+
+  // Run search swaps the results in place. The other submit buttons carry a
+  // formaction (save, refresh) and have to reach the server the normal way.
+  // Which button was pressed is remembered on the way in: not every browser
+  // fills in event.submitter, and without it the page would submit itself and
+  // scroll back to the top, which is what this is here to avoid. The form also
+  // carries run=1, so a submit that does get through still shows the results.
+  var results = document.getElementById('results');
+  var pressed = null;
+  document.addEventListener('click', function(e) {
+    var b = e.target.closest('button[type="submit"], input[type="submit"]');
+    if (b) pressed = b;
+  });
+  function runSearch() {
+    if (!form || !results) return;
+    results.style.opacity = '.5';
+    fetch(form.dataset.resultsUrl + '?' + new URLSearchParams(new FormData(form)))
+      .then(function(r) {
+        if (!r.ok) throw new Error(r.status);
+        return r.text();
+      })
+      .then(function(html) { results.innerHTML = html; initSort(); })
+      .catch(function(err) {
+        results.innerHTML = '<div class="alert alert-warning mt-4 mb-0">' +
+          'Could not run the search (' + err.message + '). Reload the page to try again.</div>';
+      })
+      .then(function() { results.style.opacity = ''; });
+  }
+  if (form) {
+    form.addEventListener('submit', function(e) {
+      var button = e.submitter || pressed;
+      pressed = null;
+      // Save stores everything on the way out, so there is nothing left to
+      // warn about. Refresh orgs/tags carries a formaction too, but it comes
+      // back to a freshly rendered page and does lose the edits, so it warns.
+      if (button && button.hasAttribute('formaction')) {
+        if (button.hasAttribute('data-saves')) savingFeed = true;
+        return;
+      }
+      e.preventDefault();
+      runSearch();
+    });
+  }
+
+  // Everything in the results card is bound through the card itself, which
+  // stays put, so a swapped-in table behaves like the one that was there.
+  if (results) {
+    results.addEventListener('click', function(e) {
+      var add = e.target.closest('.add-filter');
+      if (add) {
+        addChip(add.dataset.field, add.dataset.value);
+        var icon = add.querySelector('i');
+        if (icon) {
+          var prev = icon.className;
+          icon.className = 'fas fa-check';
+          setTimeout(function() { icon.className = prev; }, 900);
+        }
+        return;
+      }
+      var th = e.target.closest('th[data-sort]');
+      if (th) { sortRows(th); return; }
+      var countBtn = e.target.closest('#count-total-btn');
+      if (countBtn) showTotal(countBtn);
+    });
+  }
+
+  // On-demand total count (MISP has no count API, so this is a separate query
+  // the analyst triggers rather than running on every search).
+  function showTotal(btn) {
+    var resultEl = document.getElementById('count-total-result');
+    var shown = parseInt(btn.dataset.shown, 10) || 0;
+    btn.disabled = true;
+    btn.innerHTML = '<i class="fas fa-spinner fa-spin me-1"></i>Counting…';
+    fetch(btn.dataset.url)
+      .then(function(r) { return r.json(); })
+      .then(function(d) {
+        btn.classList.add('d-none');
+        if (d.error) { resultEl.innerHTML = '<span class="text-danger">count failed</span>'; return; }
+        var html = '· ' + d.total + (d.capped ? '+' : '') + ' match the query';
+        if (d.total > shown) {
+          html += ' <span class="text-warning ms-1" title="Raise the limit to at least ' + d.total +
+                  ' to sort across the full result set"><i class="fas fa-triangle-exclamation me-1"></i>limit truncates the set</span>';
+        }
+        resultEl.innerHTML = html;
+      })
+      .catch(function() {
+        btn.disabled = false;
+        btn.innerHTML = '<i class="fas fa-calculator me-1"></i>Show total';
+        resultEl.innerHTML = '<span class="text-danger">count failed</span>';
+      });
+  }
+
+  // Client-side column sorting (no re-query).
+  function sortRows(th) {
+    var table = th.closest('table');
+    var idx = parseInt(th.dataset.sort, 10);
+    var numeric = th.dataset.numeric === '1';
+    var asc = th.dataset.dir !== 'asc';
+    var tbody = table.tBodies[0];
+    var rows = Array.prototype.slice.call(tbody.rows);
+    rows.sort(function(a, b) {
+      var x = a.cells[idx].getAttribute('data-v') || a.cells[idx].textContent.trim();
+      var y = b.cells[idx].getAttribute('data-v') || b.cells[idx].textContent.trim();
+      if (numeric) { x = parseFloat(x) || 0; y = parseFloat(y) || 0; return asc ? x - y : y - x; }
+      return asc ? x.localeCompare(y) : y.localeCompare(x);
+    });
+    rows.forEach(function(r) { tbody.appendChild(r); });
+    table.querySelectorAll('th[data-sort]').forEach(function(o) {
+      o.removeAttribute('data-dir');
+      var i = o.querySelector('i.sort-ind'); if (i) i.className = 'fas fa-sort fa-xs sort-idle sort-ind';
+    });
+    th.dataset.dir = asc ? 'asc' : 'desc';
+    var ind = th.querySelector('i.sort-ind');
+    if (ind) ind.className = 'fas fa-sort-' + (asc ? 'up' : 'down') + ' fa-xs sort-ind';
+  }
+
+  function initSort() {
+    document.querySelectorAll('#results th[data-sort]').forEach(function(th) {
+      th.style.cursor = 'pointer';
+    });
+  }
+  initSort();
+});
+</script>

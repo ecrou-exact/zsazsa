@@ -11,7 +11,6 @@ import unittest
 from unittest import mock
 
 from webapp import misp_store
-from webapp.routes import indicator_feed
 
 
 class ValuesText(unittest.TestCase):
@@ -24,19 +23,19 @@ class ValuesText(unittest.TestCase):
             {"value": "evil.example"},
         ]
         self.assertEqual(
-            indicator_feed._values_text(rows),
+            misp_store.indicator_export(rows, "txt"),
             "1.2.3.4\nevil.example\n8.8.8.8",
         )
 
     def test_no_rows_is_an_empty_export(self):
-        self.assertEqual(indicator_feed._values_text([]), "")
+        self.assertEqual(misp_store.indicator_export([], "txt"), "")
 
     def test_the_csv_export_keeps_the_duplicates(self):
         rows = [
             {"value": "1.2.3.4", "server_label": "One"},
             {"value": "1.2.3.4", "server_label": "Two"},
         ]
-        self.assertEqual(indicator_feed._csv_bytes(rows).count(b"1.2.3.4"), 2)
+        self.assertEqual(misp_store.indicator_export(rows, "csv").count("1.2.3.4"), 2)
 
 
 class FakeClient:

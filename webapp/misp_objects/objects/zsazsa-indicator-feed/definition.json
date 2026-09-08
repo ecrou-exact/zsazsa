@@ -3,7 +3,7 @@
   "meta-category": "intelligence",
   "description": "Saved MISP indicator search (indicator feed) managed by the zsazsa CTI program",
   "uuid": "3f2c1a8e-6b4d-4f9a-9c1e-2d7b8a4f6c91",
-  "version": 1,
+  "version": 2,
   "attributes": {
     "feed-id": {
       "misp-attribute": "text",
@@ -69,6 +69,18 @@
       "misp-attribute": "text",
       "ui-priority": 10,
       "description": "UUID of a linked PIR",
+      "disable_correlation": true
+    },
+    "cache-interval": {
+      "misp-attribute": "text",
+      "ui-priority": 11,
+      "description": "How often the rendered feed is refreshed on disk (hourly/daily/weekly), empty when it is not cached",
+      "disable_correlation": true
+    },
+    "cache-anchor": {
+      "misp-attribute": "text",
+      "ui-priority": 12,
+      "description": "When the feed was last saved (ISO 8601). The refresh schedule hangs off this time, so feeds do not all refresh at once",
       "disable_correlation": true
     }
   }

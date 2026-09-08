@@ -1,29 +1,64 @@
-{# Indicator search results. Expects `rows`, `feed` (or None) and `query_string`
-   (the current ad-hoc filters for the download links). Sorting is client-side
-   (see index.html) so re-sorting never re-queries MISP. Rows arrive sorted by
-   attribute timestamp, newest first. #}
-{% set dl_csv = url_for('indicator_feed.download_feed', id=feed.id, fmt='csv') if feed else url_for('indicator_feed.download', fmt='csv') ~ '?' ~ query_string %}
-{% set dl_txt = url_for('indicator_feed.download_feed', id=feed.id, fmt='txt') if feed else url_for('indicator_feed.download', fmt='txt') ~ '?' ~ query_string %}
-<div id="results-stale" class="alert alert-warning d-none mt-4 mb-0">
-  <i class="fas fa-triangle-exclamation me-1"></i>Filters changed — these results may be outdated. Run the search again.
+{# Indicator search results. Expects `rows`, `feed`, `query_string` (the current
+   filters, for the download links) and `run`, which is false on a feed that has
+   not been searched yet: the card is there from the start, so Run search has
+   somewhere to put its answer and the page does not change shape underneath.
+   Sorting is client-side (see _query_js.html) so re-sorting never re-queries
+   MISP. Rows arrive sorted by attribute timestamp, newest first. #}
+{% from "_macros.html" import feed_downloads %}
+<div id="results-stale" class="alert alert-warning d-none mt-4 mb-0 d-flex align-items-center gap-2">
+  <i class="fas fa-triangle-exclamation"></i>
+  <span>Filters changed, these results may be outdated.</span>
 </div>
 <div class="card content-card mt-4">
   <div class="card-header d-flex justify-content-between align-items-center">
     <span>
-      <i class="fas fa-table me-2"></i><span id="count-shown">{{ rows | length }}</span> shown
+      <i class="fas fa-table me-2"></i>
+      {% if error %}
+      <span class="badge bg-danger-subtle text-danger-emphasis fw-normal" title="{{ error }}">
+        <i class="fas fa-triangle-exclamation me-1"></i>search failed
+      </span>
+      {% elif run %}
+      <span id="count-shown">{{ rows | length }}</span> shown
       <button type="button" class="btn btn-xs btn-outline-secondary ms-2" id="count-total-btn"
               data-url="{{ url_for('indicator_feed.count') }}?{{ query_string }}" data-shown="{{ rows | length }}">
         <i class="fas fa-calculator me-1"></i>Show total
       </button>
       <span id="count-total-result" class="ms-1"></span>
+      {% else %}
+      <span class="badge bg-secondary-subtle text-secondary-emphasis fw-normal"
+            title="Press Run search to see which indicators this query returns.">
+        <i class="fas fa-hourglass-start me-1"></i>no query run
+      </span>
+      {% endif %}
+      {% if run and not error and feed.cache_interval %}
+      {# Only worth saying once there is a table to contrast with: it came from
+         MISP just now, while the downloads and the feed URL serve the cache. #}
+      <span class="badge bg-success-subtle text-success-emphasis fw-normal ms-2"
+            title="This table queries MISP every time. The downloads and the feed URL serve the cache, refreshed {{ feed.cache_interval }}.">
+        <i class="fas fa-bolt me-1"></i>live
+      </span>
+      {% endif %}
     </span>
     <div class="d-flex gap-2">
-      <a href="{{ dl_csv }}" class="btn btn-sm btn-outline-secondary"><i class="fas fa-file-csv me-1"></i>Download CSV</a>
-      <a href="{{ dl_txt }}" class="btn btn-sm btn-outline-secondary"><i class="fas fa-list me-1"></i>Download values</a>
+      <button type="submit" class="btn btn-sm btn-outline-primary" title="Run the query again">
+        <i class="fas fa-rotate me-1"></i>Run search
+      </button>
+      {# Nothing to hand over while the query has not answered. #}
+      {% if run and not error %}{{ feed_downloads(feed, query_string) }}{% endif %}
     </div>
   </div>
   <div class="card-body p-0">
-    {% if rows %}
+    {% if error %}
+    <div class="empty-state p-4">
+      <i class="fas fa-triangle-exclamation text-warning"></i>
+      <p class="text-muted mb-0">The query did not run: {{ error }}</p>
+    </div>
+    {% elif not run %}
+    <div class="empty-state p-4">
+      <i class="fas fa-magnifying-glass text-muted"></i>
+      <p class="text-muted mb-0">Press <strong>Run search</strong> to see the indicators this query returns.</p>
+    </div>
+    {% elif rows %}
     <div class="table-responsive">
       <table class="table table-hover zsazsa-table mb-0" id="results-table" style="font-size:.85rem;">
         <thead>

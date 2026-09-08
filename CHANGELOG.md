@@ -1,5 +1,86 @@
 # Changelog
 
+## 1.0.2
+
+A security fix, a set of smaller ones, and the indicator feed reworked into a
+product with its own list and page. Upgrade for the first item: text that comes
+in from articles, newsletters and the model was put in the page as HTML.
+
+### Upgrading
+
+Pull and restart. Nothing to migrate and no setting to change. A cached feed
+writes its files under `data/feed_cache`, which zsazsa creates itself.
+
+### Fixed
+
+- Text from an article, a newsletter or the model was put in the page as HTML,
+  so a `<script>` or an `onerror` in a summary, a write-up or a briefing story
+  ran in the browser of the analyst who opened the page. It is shown as text
+  now. Markdown keeps working: bold, links, code, lists, tables and line breaks.
+- A download link of an indicator feed with an extension that does not exist
+  returned the CSV anyway, instead of saying the page is not there.
+- The public URL of a feed built its query in a slightly different way than the
+  feed page, so the two could show different indicators. Both start from the
+  same defaults now.
+- When MISP could not be reached, the manual collection sources disappeared from
+  the source list without a line in the log, as if somebody had deleted them.
+- A threat actor profile embedded only as many indicators of a linked feed as
+  the feed itself lists. A feed of 100 while the query matched 500 handed the
+  stakeholder 100 indicators as if that were all of them. The product now says
+  when a feed reached its limit, and says so as well when a feed could not be
+  read at all rather than printing it as a feed with nothing in it.
+- Deleting an indicator feed that a threat actor profile links to said nothing,
+  while the profile loses it quietly. The confirmation now names the profiles.
+- The products page counted the event reports of every product. An indicator
+  feed keeps a query and no report, so the column said 0 for each of them and
+  finding that out cost a MISP call per feed. The column is left out there.
+- An indicator search where no MISP server answered looked like a query that
+  matches nothing: the page said no indicators match, and a cached feed wrote
+  that empty answer to disk and kept serving it. zsazsa now says the search
+  failed, and a cached feed hands out the copy it already has instead of an
+  empty answer, which whatever pulls the URL cannot tell apart from a feed that
+  was emptied on purpose.
+
+### Added
+
+- `truncate=off` on the download links and on the public URL of a feed. The
+  limit of the query sizes the result table and the exports followed it, so a
+  feed with limit 100 handed out 100 indicators while the query matched far
+  more. With `truncate=off` you get everything that matches, up to 10000.
+- Two more formats for a feed. "Type + value" is the value list with
+  the type in front, separated by a tab because values do carry commas. "JSON"
+  is one document with the feed, its TLP, the moment the query ran and every
+  indicator with its event, server and tags. Both are download buttons and
+  `format=tsv` / `format=json` on the feed URL. The value list and the CSV do
+  not change.
+- Caching for a feed, off by default: switch it on when you save and pick
+  hourly, daily or weekly. The first request writes all four formats under
+  `data/feed_cache` and the next ones read those, which takes a pull from over a
+  second to a millisecond. The schedule follows the moment you saved, so feeds
+  do not all come due at once, and the analyser run re-runs the ones that are
+  due. Saving drops the cache, a query that failed is never cached, and the
+  results table on the page keeps querying MISP. A refresh that does not work
+  leaves the feed serving what it has and says so, on the feed page and in the
+  Caching column of the list, and every refresh the analyser does is in the log
+  under `/logs`. Files of feeds that no longer exist are dropped there too.
+- The indicator feed is a product list and a product page now, like the
+  briefings and the flash alerts. The list is one row per feed with its actions;
+  the page holds the product fields, the recipients, the threat actor profiles
+  that embed the feed, the PyMISP query, the query in one line with the builder
+  folded behind it, and the indicators. **New feed**, at
+  `/products/indicator-feed/new`, opens that same page with every field empty,
+  so building a feed and editing one are one form and not two. **Run search**
+  replaces only the list of indicators, without reloading the page. A link kept
+  from the old query page still opens the builder with its filters.
+
+### Internal
+
+- `requirements.txt` names `werkzeug` and `markupsafe`, which the code imports
+  itself and until now only got because Flask brings them along.
+  `flask-sqlalchemy` is removed, nothing in zsazsa imports it.
+- Tests for the feed downloads and the public URL, the cache schedule, the two
+  feed pages and the HTML escaping in the Markdown fields.
+
 ## 1.0.1
 
 A set of fixes for the product pages, for the way records get their id, and for
@@ -92,6 +173,8 @@ followed by PIR-020. In return, the same id is never given to two records.
 - Reading a MISP attribute search, applying the tag filters locally and deleting
   an attribute that can already be gone are written once now, and used by the
   search, the export and the count.
+- The indicator CSV was written twice, once for the downloads and once for the
+  profile embed. There is one writer now. The default limit of 100 is one constant now.
 
 ## 1.0.0
 

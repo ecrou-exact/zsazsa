@@ -9,6 +9,7 @@ from flask import Blueprint, flash, jsonify, redirect, render_template, request,
 import config
 from core.db import get_recent_pipeline_runs, get_latest_pipeline_run
 from webapp import collection_cache, misp_store
+from webapp.utils import age_text
 
 logger = logging.getLogger(__name__)
 bp = Blueprint("pipeline", __name__)
@@ -171,18 +172,6 @@ def _indicator_stats():
         return {"ok": False, "by_type": {}, "total_ioc": 0, "all_total": 0}
 
 
-def _age_text(seconds: float) -> str:
-    """Same wording as the ago() helper the pages use client-side."""
-    minutes = round(seconds / 60)
-    if minutes < 1:
-        return "just now"
-    if minutes < 60:
-        return f"{minutes}m ago"
-    if minutes < 1440:
-        return f"{round(minutes / 60)}h ago"
-    return f"{round(minutes / 1440)}d ago"
-
-
 # Matches the stalled threshold the job badge uses, so the two agree on a run.
 _RUN_INTERRUPTED_AFTER_S = 1800
 
@@ -223,7 +212,7 @@ def _refresh_status(status: dict | None, interval_s: int) -> dict:
     age_s = max(0.0, time.time() - status["last_fetch"])
     return {
         "last_refresh": datetime.fromtimestamp(status["last_fetch"]).strftime("%Y-%m-%d %H:%M"),
-        "refresh_age": _age_text(age_s),
+        "refresh_age": age_text(age_s),
         "matched": status.get("last_event_count"),
         "matched_new": status.get("last_new_count"),
         "refresh_duration": status.get("last_duration_s"),

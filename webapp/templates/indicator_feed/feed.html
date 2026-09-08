@@ -1,0 +1,218 @@
+{% extends "base.html" %}
+
+{# One indicator feed: what it is, what it returns, and who gets it. The same
+   page builds a new one, with every field empty and Save as feed at the bottom,
+   so an analyst meets one form and not two. The query stays collapsed behind
+   its summary until asked for. #}
+
+{% block title %}{{ page_title_text }} | zsazsa CTI{% endblock %}
+{% block page_title %}{{ page_title_text }}{% endblock %}
+
+{% block topbar_actions %}
+<a href="{{ url_for('indicator_feed.index') }}" class="btn btn-sm btn-light border shadow-sm">
+  <i class="fas fa-arrow-left me-1"></i> Back to list
+</a>
+{% endblock %}
+
+{% block content %}
+<form method="get" id="indicator-form" data-results-url="{{ results_url }}"
+      action="{{ url_for('indicator_feed.detail', id=feed.id) if is_edit else url_for('indicator_feed.new') }}">
+<input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+{# Run search normally swaps the results without leaving the page. If a browser
+   submits the form anyway, this makes that submit show them too. #}
+<input type="hidden" name="run" value="1">
+
+<div class="row g-3">
+  {# ── Product fields ─────────────────────────────────────────────────── #}
+  <div class="col-lg-8">
+    <div class="card content-card mb-3">
+      <div class="card-header"><i class="fas fa-satellite-dish me-2"></i>{{ feed.feed_id or 'New feed' }}</div>
+      <div class="card-body">
+        <div class="row g-3">
+          <div class="col-md-6">
+            <label class="form-label required-label">Name</label>
+            <input type="text" name="name" class="form-control" value="{{ feed.name }}">
+          </div>
+          <div class="col-md-3">
+            <label class="form-label">TLP</label>
+            <select name="tlp" class="form-select">
+              {% for lvl in tlp_levels %}
+              <option value="{{ lvl }}" {{ 'selected' if feed.tlp == lvl }}>TLP:{{ lvl | upper }}</option>
+              {% endfor %}
+            </select>
+          </div>
+          <div class="col-md-3">
+            <label class="form-label">Feedback by</label>
+            <input type="date" name="feedback_by" class="form-control"
+                   value="{{ feed.feedback_by.isoformat() if feed.feedback_by else '' }}">
+          </div>
+          <div class="col-12">
+            <label class="form-label">Description</label>
+            <textarea name="description" class="form-control" rows="2">{{ feed.description }}</textarea>
+          </div>
+          <div class="col-md-6">
+            <label class="form-label">Audience</label>
+            {% set sel_aud = (feed.audience.split(',') | map('trim') | list) if feed.audience else [] %}
+            <div class="d-flex flex-wrap gap-2">
+              {% for a in audiences %}
+              <div class="form-check form-check-inline me-0">
+                <input class="form-check-input" type="checkbox" name="audience" value="{{ a }}"
+                       id="paud-{{ loop.index }}" {{ 'checked' if a in sel_aud }}>
+                <label class="form-check-label small" for="paud-{{ loop.index }}">{{ a }}</label>
+              </div>
+              {% endfor %}
+            </div>
+            <div class="form-text">Roles that should receive this feed.</div>
+          </div>
+          <div class="col-md-3">
+            <label class="form-label">Author</label>
+            <input type="text" name="author" class="form-control" value="{{ feed.author }}">
+          </div>
+          <div class="col-md-3">
+            <label class="form-label">Linked PIR</label>
+            <select name="linked_pir_uuid" class="form-select">
+              <option value="">None</option>
+              {% for p in pirs %}
+              <option value="{{ p.uuid }}" {{ 'selected' if feed.linked_pir_uuid == p.uuid }}>
+                {{ p.pir_id }} - {{ p.question | truncate(50) }}
+              </option>
+              {% endfor %}
+            </select>
+          </div>
+        </div>
+
+        <hr class="my-3">
+
+        <div class="d-flex flex-wrap align-items-center gap-3">
+          <div class="form-check form-switch mb-0">
+            <input class="form-check-input" type="checkbox" role="switch" name="cache_enabled" value="yes"
+                   id="cache-enabled" {{ 'checked' if feed.cache_interval }}>
+            <label class="form-check-label" for="cache-enabled">Cache this feed on disk</label>
+          </div>
+          <select name="cache_interval" class="form-select form-select-sm" style="max-width:11rem;"
+                  {{ 'disabled' if not feed.cache_interval }} id="cache-interval">
+            {% for iv in cache_intervals %}
+            <option value="{{ iv }}" {{ 'selected' if feed.cache_interval == iv }}>Refresh {{ iv }}</option>
+            {% endfor %}
+          </select>
+          {% if feed.cache_interval %}
+          <span class="text-muted small">
+            <i class="fas fa-calendar-day me-1"></i>{{ cache_schedule }}{% if cache_next %}, next {{ cache_next.strftime('%d-%m-%Y %H:%M') }}{% endif %}
+            {% if cache_age %}&middot; written {{ cache_age }}{% else %}&middot; nothing cached yet{% endif %}
+          </span>
+          {% if cache_error %}
+          <span class="text-danger small" title="{{ cache_error.reason }}">
+            <i class="fas fa-triangle-exclamation me-1"></i>Last refresh failed on
+            {{ cache_error.at.strftime('%d-%m-%Y %H:%M') }}
+          </span>
+          {% endif %}
+          {% endif %}
+        </div>
+        <div class="form-text">
+          Off by default, so every request runs the query. The schedule follows the moment you
+          save, so feeds do not all refresh at once, and saving drops what was cached.
+        </div>
+      </div>
+    </div>
+
+    {% include "indicator_feed/_servers_card.html" %}
+  </div>
+
+  {# ── What it is, at a glance ────────────────────────────────────────── #}
+  <div class="col-lg-4">
+    <div class="card content-card mb-3">
+      <div class="card-header d-flex justify-content-between align-items-center">
+        <span><i class="fas fa-circle-info me-2"></i>Product</span>
+        {% if is_edit %}
+        <button type="button" class="btn btn-xs btn-outline-secondary"
+                data-recipients-url="{{ url_for('indicator_feed.recipients_fragment', id=feed.id) }}"
+                title="Preview recipients">
+          <i class="fas fa-users me-1"></i>Recipients
+        </button>
+        {% endif %}
+      </div>
+      <div class="card-body">
+        <dl class="row small mb-0">
+          {% if is_edit %}
+          <dt class="col-5">Created</dt>
+          <dd class="col-7">{{ feed.created_at.strftime('%d-%m-%Y') if feed.created_at else '-' }}</dd>
+          <dt class="col-5">Created by</dt>
+          <dd class="col-7">{{ feed.creator or '-' }}</dd>
+          <dt class="col-5">Used by</dt>
+          <dd class="col-7">
+            {% for tap in used_by %}
+            <a href="{{ url_for('threat_actor_profile.detail', id=tap.uuid) }}"
+               class="text-decoration-none">{{ tap.tap_id }}</a>
+            <span class="text-muted">{{ tap.title | truncate(28) }}</span>{% if not loop.last %}<br>{% endif %}
+            {% else %}
+            <span class="text-muted">No threat actor profile</span>
+            {% endfor %}
+          </dd>
+          {% endif %}
+
+          <dt class="col-5">Linked PIR</dt>
+          <dd class="col-7">
+            {% if linked_pir %}<a href="{{ url_for('requirements.pir_detail', id=linked_pir.uuid) }}">{{ linked_pir.pir_id }}</a>
+            {% else %}-{% endif %}
+          </dd>
+          <dt class="col-5">TLP</dt>
+          <dd class="col-7"><span class="tlp-badge tlp-{{ feed.tlp | slug }}">TLP:{{ feed.tlp | upper }}</span></dd>
+          <dt class="col-5">Public URL</dt>
+          <dd class="col-7">
+            {% if is_edit and feed.token %}
+            <div class="input-group input-group-sm">
+              <input type="text" class="form-control public-url font-monospace" style="font-size:.68rem;" readonly
+                     value="{{ url_for('indicator_feed.public_feed', token=feed.token, _external=True) }}">
+              <button type="button" class="btn btn-outline-secondary copy-url" title="Copy URL"><i class="fas fa-copy"></i></button>
+            </div>
+            <div class="text-warning" style="font-size:.72rem;">
+              <i class="fas fa-triangle-exclamation me-1"></i>Anyone holding this link can read the feed:
+              it needs no login and nothing checks who follows it.
+            </div>
+            {% elif is_edit %}
+            {# Feeds saved before the URL existed carry no token; the next save
+               gives them one. #}
+            <span class="text-muted">None yet. Saving the feed creates one.</span>
+            {% else %}
+            <span class="text-muted">Given to the feed when you save it.</span>
+            {% endif %}
+          </dd>
+        </dl>
+      </div>
+      <div class="card-footer d-flex gap-2 justify-content-end">
+        <a href="{{ url_for('indicator_feed.index') }}" class="btn btn-sm btn-outline-secondary">Cancel</a>
+        {# No formaction: the script picks this up and swaps the results below. #}
+        <button type="submit" class="btn btn-sm btn-outline-primary">
+          <i class="fas fa-magnifying-glass me-1"></i> Run search
+        </button>
+        <button type="submit" class="btn btn-sm btn-primary" data-saves
+                formmethod="post" formaction="{{ save_action }}">
+          <i class="fas fa-floppy-disk me-1"></i> {{ save_label }}
+        </button>
+      </div>
+    </div>
+
+    {% include "indicator_feed/_pymisp_card.html" %}
+  </div>
+</div>
+
+{# ── The query: its summary always visible, the editor behind it ───────── #}
+{% set query_summary = summary %}
+{% include "indicator_feed/_query_card.html" %}
+
+{# ── The indicators: every column, sortable, with the +/- buttons that add an
+   event or an org to the query. Run search replaces this block on its own, so
+   the page does not reload and the query stays where the analyst left it. #}
+<div id="values">
+  <div id="results">
+    {% include "indicator_feed/_results.html" %}
+  </div>
+</div>
+</form>
+
+{% include "_recipients_modal.html" %}
+{% endblock %}
+
+{% block scripts %}
+{% include "indicator_feed/_query_js.html" %}
+{% endblock %}

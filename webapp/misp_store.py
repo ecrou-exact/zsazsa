@@ -16,6 +16,8 @@ threat-actors, out-of-scope) are stored as JSON arrays inside a single text
 attribute.
 """
 
+import csv
+import io
 import json
 import logging
 import os
@@ -2032,6 +2034,8 @@ def _indicator_feed_obj(data):
     _oa(obj, "token", data.get("token"))
     _oa(obj, "creator", data.get("creator"))
     _oa(obj, "linked-pir-uuid", data.get("linked_pir_uuid"))
+    _oa(obj, "cache-interval", data.get("cache_interval"))
+    _oa(obj, "cache-anchor", data.get("cache_anchor"))
     return obj
 
 
@@ -2055,6 +2059,8 @@ def _indicator_feed_ns(event):
         token=_obj_attr(obj, "token") or "",
         creator=_obj_attr(obj, "creator") or "",
         linked_pir_uuid=_obj_attr(obj, "linked-pir-uuid") or "",
+        cache_interval=_obj_attr(obj, "cache-interval") or "",
+        cache_anchor=_obj_attr(obj, "cache-anchor") or "",
         created_at=_parse_dt(event_date.isoformat() if event_date else None),
     )
 
@@ -2113,6 +2119,12 @@ def update_indicator_feed(uuid, data):
     info = f"[zsazsa:indicator-feed] {data.get('feed_id', '')}: {(data.get('name') or '')[:80]}"
     misp.update_event({"Event": {"id": event.id, "info": info}})
     return uuid
+
+
+def profiles_using_indicator_feed(feed_uuid: str) -> list:
+    """Threat actor profiles that embed this feed. A profile stores the uuid, so
+    deleting the feed leaves it pointing at nothing."""
+    return [t for t in list_threat_actor_profiles() if feed_uuid in (t.indicator_feeds or [])]
 
 
 def delete_indicator_feed(uuid):
@@ -2354,33 +2366,28 @@ def update_threat_actor_profile(uuid, data):
     return uuid
 
 
+# Everything a profile object holds apart from its lifecycle. Publishing
+# rewrites the object, so it has to carry all of these across.
+_TAP_FIELDS = (
+    "tap_id", "title", "summary", "threat_actors", "audience", "tlp",
+    "linked_pir_uuid", "source_reliability", "source_credibility",
+    "attribution_rationale", "assessment_confidence", "review_date",
+    "actor_types", "synonyms", "suspected_origin", "origin_confidence",
+    "motivation", "sponsorship", "capabilities", "mode_of_operation",
+    "infrastructure", "rec_prevention", "rec_detection", "rec_response",
+    "indicator_feeds", "geographic_scope", "sectors", "mitre_attack_techniques",
+    "threat_types", "time_frame", "technology", "vendor", "external_references",
+    "feedback_deadline", "author", "creator",
+)
+
+
 def publish_threat_actor_profile(uuid):
     tap = get_threat_actor_profile(uuid)
     if tap is None:
         raise RuntimeError("threat actor profile not found")
-    data = {
-        "tap_id": tap.tap_id, "title": tap.title, "summary": tap.summary,
-        "threat_actors": tap.threat_actors, "audience": tap.audience, "tlp": tap.tlp,
-        "linked_pir_uuid": tap.linked_pir_uuid, "source_reliability": tap.source_reliability,
-        "source_credibility": tap.source_credibility,
-        "attribution_rationale": tap.attribution_rationale,
-        "assessment_confidence": tap.assessment_confidence,
-        "review_date": tap.review_date.isoformat() if tap.review_date else "",
-        "actor_types": tap.actor_types, "synonyms": tap.synonyms,
-        "suspected_origin": tap.suspected_origin, "origin_confidence": tap.origin_confidence,
-        "motivation": tap.motivation, "sponsorship": tap.sponsorship,
-        "capabilities": tap.capabilities, "mode_of_operation": tap.mode_of_operation,
-        "infrastructure": tap.infrastructure,
-        "rec_prevention": tap.rec_prevention, "rec_detection": tap.rec_detection,
-        "rec_response": tap.rec_response, "indicator_feeds": tap.indicator_feeds,
-        "geographic_scope": tap.geographic_scope, "sectors": tap.sectors,
-        "mitre_attack_techniques": tap.mitre_attack_techniques, "threat_types": tap.threat_types,
-        "time_frame": tap.time_frame, "technology": tap.technology, "vendor": tap.vendor,
-        "external_references": tap.external_references,
-        "feedback_deadline": tap.feedback_deadline.isoformat() if tap.feedback_deadline else "",
-        "author": tap.author, "creator": tap.creator,
-        "status": "Published", "published_at": date.today().isoformat(),
-    }
+    data = {field: getattr(tap, field) for field in _TAP_FIELDS}
+    data["status"] = "Published"
+    data["published_at"] = date.today().isoformat()
     update_threat_actor_profile(uuid, data)
 
 
@@ -2518,6 +2525,29 @@ def _tag_filtered(attrs, filters):
     return kept
 
 
+# How many indicators a query returns when it does not say. This sizes the
+# result table, and the exports follow it unless they ask for everything.
+DEFAULT_INDICATOR_LIMIT = 100
+
+# The most one search asks MISP for. Every attribute arrives with its event, so
+# a result set is held in memory whole: 10000 rows is already a few hundred MB.
+MAX_SEARCH_LIMIT = 10000
+
+
+def indicator_limit(filters) -> int:
+    """How many indicators a query fetches: its own limit, defaulted and capped.
+
+    MISP is asked for exactly this many, so it is also the number a result is
+    truncated to. A stored limit that is not a number falls back to the default,
+    as the form parser does, rather than taking the page down with it.
+    """
+    try:
+        limit = int(filters.get("limit") or DEFAULT_INDICATOR_LIMIT)
+    except (TypeError, ValueError):
+        limit = DEFAULT_INDICATOR_LIMIT
+    return max(1, min(limit, MAX_SEARCH_LIMIT))
+
+
 def _indicator_search_kwargs(filters):
     """Build the PyMISP attribute-search kwargs from a feed's filter dict.
 
@@ -2528,7 +2558,7 @@ def _indicator_search_kwargs(filters):
         "controller": "attributes",
         "pythonify": False,
         "include_context": True,
-        "limit": max(1, min(int(filters.get("limit") or 100), 10000)),
+        "limit": indicator_limit(filters),
     }
     if filters.get("types"):
         kwargs["type_attribute"] = list(filters["types"])
@@ -2628,8 +2658,8 @@ def _parse_attribute_rows(raw, server_id, server_label, server_url, filters):
     return rows
 
 
-# Column order for indicator-feed result exports (CSV). Single source of truth,
-# reused by the indicator-feed views and the threat-actor-profile embed.
+# The CSV layout of a result: one place, so a feed downloaded from its page, one
+# pulled from its URL and one embedded in a threat actor profile all line up.
 INDICATOR_FEED_COLUMNS = [
     ("server_label", "Server"),
     ("event_id", "Event ID"),
@@ -2643,16 +2673,78 @@ INDICATOR_FEED_COLUMNS = [
 ]
 
 
-def indicator_feed_csv_text(feed) -> str:
-    """Run a saved feed's query and return its results as CSV text.
+# How a feed is handed over: the plain value list, the same list with each
+# value's type, the full CSV, and JSON for tooling that will not parse text.
+INDICATOR_FORMATS = {
+    "csv": "text/csv",
+    "txt": "text/plain",
+    "tsv": "text/tab-separated-values",
+    "json": "application/json",
+}
 
-    One row per matching attribute, so a value found on several events or
-    servers appears once per row with its own context. The plain-text export
+# What each indicator carries in the JSON export: the columns of the CSV plus
+# the context a tool can act on, the event uuid and URL and the tags that hold
+# the TLP the indicator arrived under.
+_JSON_FIELDS = ("type", "value", "to_ids", "attribute_timestamp", "tags", "server_label",
+                "event_id", "event_uuid", "event_title", "creator_org", "event_date", "event_url")
+
+
+def indicator_export(rows, fmt, feed=None) -> str:
+    """Render result rows in one of the INDICATOR_FORMATS.
+
+    Anything unknown gives the plain value list, which is what a feed URL has
+    always returned without a format.
+    """
+    if fmt == "csv":
+        return indicator_csv_text(rows)
+    if fmt == "tsv":
+        return indicator_typed_values_text(rows)
+    if fmt == "json":
+        return indicator_json_text(rows, feed)
+    return indicator_values_text(rows)
+
+
+def indicator_values_text(rows) -> str:
+    """One line per unique value, in first-seen order.
+
+    The same value can come back on several attributes, events or servers, and
+    a plain value list has no context to tell them apart. The CSV keeps them all.
+    """
+    return "\n".join(dict.fromkeys(str(r.get("value", "")) for r in rows))
+
+
+def indicator_typed_values_text(rows) -> str:
+    """One `type<TAB>value` line per unique pair, in first-seen order.
+
+    Tab-separated rather than comma-separated: values carry commas (e-mail
+    subjects do), tabs they do not, so a consumer can split on the first tab.
+    """
+    pairs = dict.fromkeys((str(r.get("type", "")), str(r.get("value", ""))) for r in rows)
+    return "\n".join(f"{t}\t{v}" for t, v in pairs)
+
+
+def indicator_json_text(rows, feed=None) -> str:
+    """The result as one JSON document: what it is, when it ran, and the rows.
+
+    Every matching attribute is listed, as in the CSV, so a value seen on
+    several events appears once per event with its own context.
+    """
+    doc = {}
+    if feed is not None:
+        doc["feed"] = {"id": feed.feed_id, "name": feed.name,
+                       "description": feed.description, "tlp": feed.tlp}
+    doc["generated_at"] = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+    doc["count"] = len(rows)
+    doc["indicators"] = [{f: r.get(f) for f in _JSON_FIELDS} for r in rows]
+    return json.dumps(doc, indent=2)
+
+
+def indicator_csv_text(rows) -> str:
+    """Result rows as CSV text.
+
+    One line per matching attribute, so a value found on several events or
+    servers appears once per line with its own context. The plain-text export
     de-duplicates instead."""
-    import csv
-    import io
-    query = feed.query or {}
-    rows = search_indicators(query, server_ids=query.get("servers"))
     buf = io.StringIO()
     writer = csv.writer(buf)
     writer.writerow([header for _, header in INDICATOR_FEED_COLUMNS])
@@ -2661,23 +2753,49 @@ def indicator_feed_csv_text(feed) -> str:
     return buf.getvalue()
 
 
-def search_indicators(filters, server_ids=None):
+def _no_answer_reason(clients, failed) -> str:
+    """Why nothing was actually asked, or "" when a server did answer.
+
+    An outage otherwise looks exactly like a query that matches nothing, which
+    the caller must not take for an answer: the feed cache would store it, and
+    the results table would claim the query found nothing. The reason reaches
+    the analyst, so it says which of the two happened.
+    """
+    if not clients:
+        return "no MISP server is configured for indicator feeds"
+    if failed == len(clients):
+        return "no MISP server answered"
+    return ""
+
+
+def search_indicators(filters, server_ids=None, limit=None):
     """Run the attribute search across the selected MISP servers and merge.
 
     `server_ids` selects which configured servers to query (default: all
     enabled). Rows from every server are merged and sorted by attribute
     timestamp, newest first. Each row carries its originating server and a
     server-specific event URL.
+
+    `limit` replaces the query's own limit. The exports pass MAX_SEARCH_LIMIT to
+    fetch everything that matches, since the stored limit sizes the result table
+    rather than the feed.
     """
     kwargs = _indicator_search_kwargs(filters)
-    rows = []
-    for sid, label, url, client in _indicator_feed_clients(server_ids):
+    if limit:
+        kwargs["limit"] = limit
+    clients = _indicator_feed_clients(server_ids)
+    rows, failed = [], 0
+    for sid, label, url, client in clients:
         try:
             raw = client.search(**kwargs)
         except Exception:
             logger.exception("Indicator search failed on server %s", sid)
+            failed += 1
             continue
         rows.extend(_parse_attribute_rows(raw, sid, label, url, filters))
+    reason = _no_answer_reason(clients, failed)
+    if reason:
+        raise RuntimeError(reason)
     rows.sort(key=lambda r: r["_ts"], reverse=True)
     return rows
 
@@ -2701,17 +2819,22 @@ def count_indicators(filters, server_ids=None, cap=100000):
     kwargs["limit"] = cap
     if not (filters.get("tags_include") or filters.get("tags_exclude")):
         kwargs.pop("include_context", None)
-    total, capped = 0, False
-    for sid, _label, _url, client in _indicator_feed_clients(server_ids):
+    clients = _indicator_feed_clients(server_ids)
+    total, capped, failed = 0, False, 0
+    for sid, _label, _url, client in clients:
         try:
             raw = client.search(**kwargs)
         except Exception:
             logger.exception("Indicator count failed on server %s", sid)
+            failed += 1
             continue
         attrs = _attributes_from(raw)
         if len(attrs) >= cap:
             capped = True
         total += len(_tag_filtered(attrs, filters))
+    reason = _no_answer_reason(clients, failed)
+    if reason:
+        raise RuntimeError(reason)
     return total, capped
 
 
@@ -3546,8 +3669,10 @@ def get_all_collection_source_labels() -> list[str]:
         for src in list_collection_sources():
             if src.enabled and src.name and src.name not in labels:
                 labels.append(src.name)
-    except Exception:
-        pass
+    except Exception as exc:
+        # The picker still works without them, but silently dropping every
+        # manual source when MISP is unreachable looks like they were deleted.
+        logger.warning("Could not add the manual collection sources to the list: %s", exc)
     return labels
 
 

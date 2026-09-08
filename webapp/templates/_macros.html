@@ -105,3 +105,19 @@
   {% for k, v in story.cti_evaluation.items() %}<span class="{{ chip_class }}">{{ k }}={{ v }}</span>{% endfor %}</div>
 {% endif %}
 {% endmacro %}
+
+{% macro feed_downloads(feed=None, query_string='', size='sm') %}
+{# The formats an indicator feed is served in, as download buttons, in the order
+   an analyst is most likely to want them. A feed with an id downloads by that
+   id; one that is not saved yet sends its current filters along in the URL. #}
+{% for fmt, icon, label in [('csv', 'fa-file-csv', 'CSV'), ('txt', 'fa-list', 'Values'),
+                            ('tsv', 'fa-table-list', 'Type + value'), ('json', 'fa-code', 'JSON')] %}
+{# `download` marks these as what they are: the response is an attachment and
+   the page stays put, which is also what keeps the unsaved-changes guard from
+   asking about a download. #}
+<a href="{{ url_for('indicator_feed.download_feed', id=feed.id, fmt=fmt) if feed and feed.id
+             else (url_for('indicator_feed.download', fmt=fmt) ~ '?' ~ query_string) }}"
+   download class="btn btn-{{ size }} btn-outline-secondary text-nowrap" title="Download {{ label }}">
+  <i class="fas {{ icon }} me-1"></i>{{ label }}</a>
+{% endfor %}
+{% endmacro %}

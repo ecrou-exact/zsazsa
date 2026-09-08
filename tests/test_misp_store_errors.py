@@ -59,5 +59,73 @@ class DeleteFailures(unittest.TestCase):
         misp_store.delete_fia_attachment("a" * 36)
 
 
+class SearchOutages(unittest.TestCase):
+    """A MISP that does not answer must not look like a query with no matches.
+
+    The per-server loop keeps going when one server fails, which is right for a
+    partial outage, but a total one used to come back as an empty result: the
+    page said "no indicators match", and a cached feed wrote that empty answer
+    to disk and served it for the rest of its interval.
+    """
+
+    def _clients(self, *behaviours):
+        clients = []
+        for i, raising in enumerate(behaviours):
+            client = mock.MagicMock()
+            if raising:
+                client.search.side_effect = ConnectionError("down")
+            else:
+                client.search.return_value = [
+                    {"type": "ip-dst", "value": f"10.0.0.{i}", "timestamp": "1700000000",
+                     "to_ids": True, "Event": {"id": "1", "uuid": "e" * 36, "info": "x",
+                                               "date": "2026-01-01", "Orgc": {"name": "ORG"}}}]
+            clients.append((f"s{i}", f"S{i}", "https://misp.example", client))
+        return clients
+
+    def test_it_raises_when_no_server_answers(self):
+        with mock.patch.object(misp_store, "_indicator_feed_clients",
+                               return_value=self._clients(True, True)):
+            with self.assertRaises(RuntimeError) as caught:
+                misp_store.search_indicators({"limit": 10})
+        self.assertEqual(str(caught.exception), "no MISP server answered")
+
+    def test_it_raises_when_there_is_no_server_to_ask(self):
+        """The analyst reads this reason on the page, and an install with no
+        servers yet is a different problem from one that cannot be reached."""
+        with mock.patch.object(misp_store, "_indicator_feed_clients", return_value=[]):
+            with self.assertRaises(RuntimeError) as caught:
+                misp_store.search_indicators({"limit": 10})
+        self.assertIn("no MISP server is configured", str(caught.exception))
+
+    def test_one_server_answering_is_still_an_answer(self):
+        with mock.patch.object(misp_store, "_indicator_feed_clients",
+                               return_value=self._clients(True, False)):
+            rows = misp_store.search_indicators({"limit": 10})
+        self.assertEqual([r["value"] for r in rows], ["10.0.0.1"])
+
+    def test_the_count_reports_an_outage_rather_than_zero(self):
+        with mock.patch.object(misp_store, "_indicator_feed_clients",
+                               return_value=self._clients(True, True)):
+            with self.assertRaises(RuntimeError):
+                misp_store.count_indicators({"limit": 10})
+
+    def test_a_failed_search_keeps_the_feed_out_of_the_cache(self):
+        import tempfile
+        from pathlib import Path
+        from webapp import feed_cache
+        from webapp.routes import indicator_feed
+        feed = SimpleNamespace(uuid="f" * 36, id="f" * 36, feed_id="FEED-001", name="n",
+                               query={"types": ["ip-dst"], "limit": 5}, tlp="clear",
+                               cache_interval="daily", cache_anchor="")
+        tmp = tempfile.TemporaryDirectory()
+        self.addCleanup(tmp.cleanup)
+        with mock.patch.object(misp_store, "search_indicators", side_effect=RuntimeError("down")), \
+             mock.patch.object(feed_cache, "_CACHE_DIR", Path(tmp.name)), \
+             mock.patch.object(feed_cache, "write") as write:
+            body = indicator_feed._feed_export(feed, "txt", {})
+        self.assertEqual(body, "")
+        write.assert_not_called()
+
+
 if __name__ == "__main__":
     unittest.main()

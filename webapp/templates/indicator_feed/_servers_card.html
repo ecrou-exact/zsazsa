@@ -1,0 +1,48 @@
+{# Which MISP servers the query is put to. It sits beside the feed's own
+   fields rather than in the query card, which is why it carries the marker the
+   script watches: it is part of the query wherever it is drawn. #}
+<div class="card content-card mb-3" data-query-part>
+  <div class="card-header d-flex align-items-center justify-content-between">
+    <span>
+      <img src="{{ url_for('static', filename='misp-logo.png') }}" alt="MISP" style="height:15px;width:auto;vertical-align:middle;margin-right:6px;opacity:.8;">MISP servers
+    </span>
+    {# The organisation and tag pick-lists in the query are built from these
+       servers, so the refresh that rebuilds them belongs here. A nested
+       <form> would be invalid, so the button posts the page form to the
+       refresh endpoint, as the save buttons do. #}
+    <span class="d-flex align-items-center gap-2">
+      {% if metadata_refreshed_at %}
+      <span class="text-muted small"><i class="fas fa-clock me-1"></i>Org/tag lists {{ metadata_refreshed_at }}</span>
+      {% else %}
+      <span class="text-warning small"><i class="fas fa-triangle-exclamation me-1"></i>No org/tag lists yet</span>
+      {% endif %}
+      <button type="submit" class="btn btn-xs btn-outline-secondary"
+              formmethod="post" formaction="{{ url_for('indicator_feed.refresh_metadata') }}"
+              title="Pull the organisation and tag lists from these servers">
+        <i class="fas fa-arrows-rotate me-1"></i>Refresh orgs/tags
+      </button>
+    </span>
+  </div>
+  <div class="card-body">
+    {% if servers %}
+    <div class="d-flex flex-column gap-2">
+      {% for s in servers %}
+      <label class="d-flex align-items-center gap-2 border rounded px-3 py-2 mb-0" style="cursor:pointer;">
+        <input class="form-check-input mt-0" type="checkbox" name="servers" value="{{ s.id }}"
+               {{ 'checked' if (not filters.servers) or (s.id in filters.servers) }}>
+        <i class="fas fa-server text-muted"></i>
+        <span class="fw-semibold">{{ s.label }}</span>
+        <span class="text-muted small font-monospace">{{ s.url }}</span>
+        {% if s.enabled %}
+        <span class="badge source-enabled ms-auto" style="font-size:.7rem;"><i class="fas fa-circle-check me-1"></i>Enabled</span>
+        {% else %}
+        <span class="badge source-disabled ms-auto" style="font-size:.7rem;"><i class="fas fa-circle-pause me-1"></i>Disabled</span>
+        {% endif %}
+      </label>
+      {% endfor %}
+    </div>
+    {% else %}
+    <p class="text-muted small mb-0">No MISP servers configured. Add them under Settings → Collection sources.</p>
+    {% endif %}
+  </div>
+</div>

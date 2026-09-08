@@ -1,4 +1,4 @@
-<mxfile host="Electron" compressed="false" agent="Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) draw.io/28.2.5 Chrome/138.0.7204.251 Electron/37.6.1 Safari/537.36" version="28.2.5" pages="3">
+<mxfile host="Electron" compressed="false" agent="Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) draw.io/28.2.5 Chrome/138.0.7204.251 Electron/37.6.1 Safari/537.36" version="28.2.5" pages="4">
   <diagram name="Overview" id="overview">
     <mxGraphModel dx="3292" dy="1070" grid="0" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="0" pageScale="1" pageWidth="1600" pageHeight="1000" background="#0a1220" math="0" shadow="0">
       <root>
@@ -238,6 +238,93 @@
             </Array>
           </mxGeometry>
         </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+  <diagram name="Indicator Feed Problem" id="indicator-feed-problem">
+    <mxGraphModel dx="2821" dy="917" grid="0" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="0" pageScale="1" pageWidth="1600" pageHeight="1000" background="#0a1220" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+        <mxCell id="fp-bg" value="" style="rounded=0;fillColor=#0a1220;gradientColor=#0f1f35;gradientDirection=south;strokeColor=none;" vertex="1" parent="1">
+          <mxGeometry width="1600" height="1000" as="geometry" />
+        </mxCell>
+        <mxCell id="fp-title" value="Recurring Indicator Feeds&#xa;Why separate scripts become difficult to manage" style="rounded=1;arcSize=12;whiteSpace=wrap;html=1;fillColor=#132742;gradientColor=#0f1f35;gradientDirection=east;strokeColor=#2a4d73;strokeWidth=2;fontColor=#e8f2ff;fontSize=28;fontStyle=1;spacing=16;" vertex="1" parent="1">
+          <mxGeometry x="40" y="36" width="1520" height="100" as="geometry" />
+        </mxCell>
+        <mxCell id="fp-brand-icon" value="" style="shape=image;imageAspect=0;aspect=fixed;strokeColor=none;fillColor=none;image=data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAzMiAzMiI+CiAgPGRlZnM+CiAgICA8bGluZWFyR3JhZGllbnQgaWQ9ImJnIiB4MT0iMCIgeTE9IjAiIHgyPSIxIiB5Mj0iMSI+CiAgICAgIDxzdG9wIG9mZnNldD0iMCUiIHN0b3AtY29sb3I9IiMwMDk5ZjEiLz4KICAgICAgPHN0b3Agb2Zmc2V0PSIxMDAlIiBzdG9wLWNvbG9yPSIjMDA0NGYxIi8+CiAgICA8L2xpbmVhckdyYWRpZW50PgogIDwvZGVmcz4KICA8cG9seWdvbiBwb2ludHM9IjE2LDEgMzEsOC43NSAzMSwyMy4yNSAxNiwzMSAxLDIzLjI1IDEsOC43NSIgZmlsbD0idXJsKCNiZykiLz4KICA8cGF0aCB0cmFuc2Zvcm09InRyYW5zbGF0ZSg3LDYpIHNjYWxlKDAuNzUpIgogICAgICAgIGQ9Ik0xMiAxTDMgNXY2YzAgNS41NSAzLjg0IDEwLjc0IDkgMTIgNS4xNi0xLjI2IDktNi40NSA5LTEyVjVsLTktNHoiCiAgICAgICAgZmlsbD0id2hpdGUiLz4KPC9zdmc+Cg==;" vertex="1" parent="1">
+          <mxGeometry x="1320" y="56" width="34" height="34" as="geometry" />
+        </mxCell>
+        <mxCell id="fp-brand-name" value="zsazsa &lt;font color=&quot;#58a9ff&quot;&gt;CTI&lt;/font&gt;" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;fontSize=16;fontStyle=1;fontColor=#e8f2ff;" vertex="1" parent="1">
+          <mxGeometry x="1362" y="59" width="150" height="28" as="geometry" />
+        </mxCell>
+        <mxCell id="fp-label-sources" value="INDICATOR SOURCES" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;fontSize=12;fontStyle=1;fontColor=#9fbbe0;" vertex="1" parent="1">
+          <mxGeometry x="60" y="158" width="260" height="24" as="geometry" />
+        </mxCell>
+        <mxCell id="fp-label-scripts" value="ONE SCRIPT PER CONSUMER" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;fontSize=12;fontStyle=1;fontColor=#9fbbe0;" vertex="1" parent="1">
+          <mxGeometry x="775" y="158" width="290" height="24" as="geometry" />
+        </mxCell>
+        <mxCell id="fp-label-consumers" value="OPERATIONAL CONSUMERS" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;fontSize=12;fontStyle=1;fontColor=#9fd6d1;" vertex="1" parent="1">
+          <mxGeometry x="1160" y="158" width="350" height="24" as="geometry" />
+        </mxCell>
+        <mxCell id="fp-source-1" value="Open source communities&#xa;High-volume shared intelligence" style="rounded=1;arcSize=10;whiteSpace=wrap;html=1;fillColor=#173053;gradientColor=#142744;gradientDirection=south;strokeColor=#3b638d;strokeWidth=2;fontColor=#dcecff;fontSize=14;fontStyle=1;spacing=12;" vertex="1" parent="1">
+          <mxGeometry x="60" y="205" width="270" height="90" as="geometry" />
+        </mxCell>
+        <mxCell id="fp-source-2" value="Commercial providers&#xa;Contracted intelligence feeds" style="rounded=1;arcSize=10;whiteSpace=wrap;html=1;fillColor=#173053;gradientColor=#142744;gradientDirection=south;strokeColor=#3b638d;strokeWidth=2;fontColor=#dcecff;fontSize=14;fontStyle=1;spacing=12;" vertex="1" parent="1">
+          <mxGeometry x="60" y="325" width="270" height="90" as="geometry" />
+        </mxCell>
+        <mxCell id="fp-source-3" value="National CSIRT and ISAC&#xa;Sector and regulatory reporting" style="rounded=1;arcSize=10;whiteSpace=wrap;html=1;fillColor=#173053;gradientColor=#142744;gradientDirection=south;strokeColor=#3b638d;strokeWidth=2;fontColor=#dcecff;fontSize=14;fontStyle=1;spacing=12;" vertex="1" parent="1">
+          <mxGeometry x="60" y="445" width="270" height="90" as="geometry" />
+        </mxCell>
+        <mxCell id="fp-source-4" value="Internal intelligence&#xa;CSIRT incidents, analysts and collection" style="rounded=1;arcSize=10;whiteSpace=wrap;html=1;fillColor=#173053;gradientColor=#142744;gradientDirection=south;strokeColor=#3b638d;strokeWidth=2;fontColor=#dcecff;fontSize=14;fontStyle=1;spacing=12;" vertex="1" parent="1">
+          <mxGeometry x="60" y="565" width="270" height="90" as="geometry" />
+        </mxCell>
+        <mxCell id="fp-misp" value="MISP&#xa;Shared source of truth&#xa;&#xa;IP addresses · domains&#xa;URLs · file hashes" style="rounded=1;arcSize=12;whiteSpace=wrap;html=1;fillColor=#1b3f6a;gradientColor=#165287;gradientDirection=south;strokeColor=#56a1d8;strokeWidth=3;fontColor=#ffffff;fontSize=18;fontStyle=1;spacing=16;align=center;verticalAlign=middle;" vertex="1" parent="1">
+          <mxGeometry x="405" y="300" width="285" height="270" as="geometry" />
+        </mxCell>
+        <mxCell id="fp-script-1" value="IP export script&#xa;One value per line" style="rounded=1;arcSize=10;whiteSpace=wrap;html=1;fillColor=#23344f;gradientColor=#1a2840;strokeColor=#5f7ea5;strokeWidth=2;fontColor=#e9f2ff;fontSize=14;fontStyle=1;spacing=12;" vertex="1" parent="1">
+          <mxGeometry x="775" y="205" width="290" height="90" as="geometry" />
+        </mxCell>
+        <mxCell id="fp-script-2" value="Domain export script&#xa;Sinkhole format" style="rounded=1;arcSize=10;whiteSpace=wrap;html=1;fillColor=#23344f;gradientColor=#1a2840;strokeColor=#5f7ea5;strokeWidth=2;fontColor=#e9f2ff;fontSize=14;fontStyle=1;spacing=12;" vertex="1" parent="1">
+          <mxGeometry x="775" y="325" width="290" height="90" as="geometry" />
+        </mxCell>
+        <mxCell id="fp-script-3" value="CSV export script&#xa;Indicators with context" style="rounded=1;arcSize=10;whiteSpace=wrap;html=1;fillColor=#23344f;gradientColor=#1a2840;strokeColor=#5f7ea5;strokeWidth=2;fontColor=#e9f2ff;fontSize=14;fontStyle=1;spacing=12;" vertex="1" parent="1">
+          <mxGeometry x="775" y="445" width="290" height="90" as="geometry" />
+        </mxCell>
+        <mxCell id="fp-script-4" value="Incident script&#xa;Still running every night" style="rounded=1;arcSize=10;whiteSpace=wrap;html=1;fillColor=#23344f;gradientColor=#1a2840;strokeColor=#5f7ea5;strokeWidth=2;fontColor=#e9f2ff;fontSize=14;fontStyle=1;spacing=12;" vertex="1" parent="1">
+          <mxGeometry x="775" y="565" width="290" height="90" as="geometry" />
+        </mxCell>
+        <mxCell id="fp-consumer-1" value="Firewall and proxy&#xa;Block known infrastructure" style="rounded=1;arcSize=10;whiteSpace=wrap;html=1;fillColor=#154f4a;gradientColor=#0f3f3b;gradientDirection=south;strokeColor=#2e8f87;strokeWidth=2;fontColor=#ddfffb;fontSize=14;fontStyle=1;spacing=12;" vertex="1" parent="1">
+          <mxGeometry x="1160" y="205" width="350" height="90" as="geometry" />
+        </mxCell>
+        <mxCell id="fp-consumer-2" value="DNS sinkhole&#xa;Redirect malicious domains" style="rounded=1;arcSize=10;whiteSpace=wrap;html=1;fillColor=#154f4a;gradientColor=#0f3f3b;gradientDirection=south;strokeColor=#2e8f87;strokeWidth=2;fontColor=#ddfffb;fontSize=14;fontStyle=1;spacing=12;" vertex="1" parent="1">
+          <mxGeometry x="1160" y="325" width="350" height="90" as="geometry" />
+        </mxCell>
+        <mxCell id="fp-consumer-3" value="SIEM and detection engineering&#xa;Detect and enrich activity" style="rounded=1;arcSize=10;whiteSpace=wrap;html=1;fillColor=#154f4a;gradientColor=#0f3f3b;gradientDirection=south;strokeColor=#2e8f87;strokeWidth=2;fontColor=#ddfffb;fontSize=14;fontStyle=1;spacing=12;" vertex="1" parent="1">
+          <mxGeometry x="1160" y="445" width="350" height="90" as="geometry" />
+        </mxCell>
+        <mxCell id="fp-consumer-4" value="Threat hunting and CSIRT&#xa;Search history and enrich incidents" style="rounded=1;arcSize=10;whiteSpace=wrap;html=1;fillColor=#154f4a;gradientColor=#0f3f3b;gradientDirection=south;strokeColor=#2e8f87;strokeWidth=2;fontColor=#ddfffb;fontSize=14;fontStyle=1;spacing=12;" vertex="1" parent="1">
+          <mxGeometry x="1160" y="565" width="350" height="90" as="geometry" />
+        </mxCell>
+        <mxCell id="fp-problem" value="The operational problem&#xa;Different formats · changing filters · duplicate and stale indicators · false positives&#xa;No shared owner, TLP, overview or documentation" style="rounded=1;arcSize=10;whiteSpace=wrap;html=1;fillColor=#3a2f3f;gradientColor=#2a2435;gradientDirection=south;strokeColor=#a16d91;strokeWidth=2;fontColor=#f8eafa;fontSize=16;fontStyle=1;spacing=14;align=center;verticalAlign=middle;" vertex="1" parent="1">
+          <mxGeometry x="405" y="750" width="1105" height="150" as="geometry" />
+        </mxCell>
+        <mxCell id="fp-note" value="Without warninglist filtering and regular review, a useful feed becomes alert fatigue." style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;fontSize=13;fontStyle=1;fontColor=#c9b4c8;" vertex="1" parent="1">
+          <mxGeometry x="510" y="915" width="895" height="30" as="geometry" />
+        </mxCell>
+        <mxCell id="fp-e-source-1" style="edgeStyle=orthogonalEdgeStyle;rounded=1;strokeColor=#59a3df;strokeWidth=2;endArrow=block;endFill=1;" edge="1" parent="1" source="fp-source-1" target="fp-misp"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="fp-e-source-2" style="edgeStyle=orthogonalEdgeStyle;rounded=1;strokeColor=#59a3df;strokeWidth=2;endArrow=block;endFill=1;" edge="1" parent="1" source="fp-source-2" target="fp-misp"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="fp-e-source-3" style="edgeStyle=orthogonalEdgeStyle;rounded=1;strokeColor=#59a3df;strokeWidth=2;endArrow=block;endFill=1;" edge="1" parent="1" source="fp-source-3" target="fp-misp"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="fp-e-source-4" style="edgeStyle=orthogonalEdgeStyle;rounded=1;strokeColor=#59a3df;strokeWidth=2;endArrow=block;endFill=1;" edge="1" parent="1" source="fp-source-4" target="fp-misp"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="fp-e-script-1" style="edgeStyle=orthogonalEdgeStyle;rounded=1;strokeColor=#8fb8e0;strokeWidth=2;endArrow=block;endFill=1;" edge="1" parent="1" source="fp-misp" target="fp-script-1"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="fp-e-script-2" style="edgeStyle=orthogonalEdgeStyle;rounded=1;strokeColor=#8fb8e0;strokeWidth=2;endArrow=block;endFill=1;" edge="1" parent="1" source="fp-misp" target="fp-script-2"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="fp-e-script-3" style="edgeStyle=orthogonalEdgeStyle;rounded=1;strokeColor=#8fb8e0;strokeWidth=2;endArrow=block;endFill=1;" edge="1" parent="1" source="fp-misp" target="fp-script-3"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="fp-e-script-4" style="edgeStyle=orthogonalEdgeStyle;rounded=1;strokeColor=#8fb8e0;strokeWidth=2;endArrow=block;endFill=1;" edge="1" parent="1" source="fp-misp" target="fp-script-4"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="fp-e-consumer-1" style="edgeStyle=orthogonalEdgeStyle;rounded=1;strokeColor=#3fc7bc;strokeWidth=2;endArrow=block;endFill=1;" edge="1" parent="1" source="fp-script-1" target="fp-consumer-1"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="fp-e-consumer-2" style="edgeStyle=orthogonalEdgeStyle;rounded=1;strokeColor=#3fc7bc;strokeWidth=2;endArrow=block;endFill=1;" edge="1" parent="1" source="fp-script-2" target="fp-consumer-2"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="fp-e-consumer-3" style="edgeStyle=orthogonalEdgeStyle;rounded=1;strokeColor=#3fc7bc;strokeWidth=2;endArrow=block;endFill=1;" edge="1" parent="1" source="fp-script-3" target="fp-consumer-3"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="fp-e-consumer-4" style="edgeStyle=orthogonalEdgeStyle;rounded=1;strokeColor=#3fc7bc;strokeWidth=2;endArrow=block;endFill=1;" edge="1" parent="1" source="fp-script-4" target="fp-consumer-4"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="fp-e-problem" style="edgeStyle=orthogonalEdgeStyle;rounded=1;strokeColor=#a16d91;strokeWidth=2;dashed=1;endArrow=block;endFill=1;" edge="1" parent="1" source="fp-script-4" target="fp-problem"><mxGeometry relative="1" as="geometry" /></mxCell>
       </root>
     </mxGraphModel>
   </diagram>

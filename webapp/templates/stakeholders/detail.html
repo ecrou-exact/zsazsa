@@ -75,11 +75,14 @@
         <div class="d-flex flex-wrap gap-2">
           {% for p in stakeholder.products %}
           {% set mode = stakeholder.product_modes.get(p) if stakeholder.product_modes else None %}
+          {# Only an automated subscription says anything: the mode picker is
+             hidden, so after-approval is what a stakeholder carries by default
+             rather than something anyone chose. #}
           <span class="product-tag">
             {{ p }}
-            <span class="badge ms-1" style="background:{{ 'var(--accent-green)' if mode == 'automated' else 'var(--source-disabled-fg)' }};font-weight:500;">
-              {{ mode or 'after-approval' }}
-            </span>
+            {% if mode == 'automated' %}
+            <span class="badge ms-1" style="background:var(--accent-green);font-weight:500;">automated</span>
+            {% endif %}
           </span>
           {% endfor %}
         </div>

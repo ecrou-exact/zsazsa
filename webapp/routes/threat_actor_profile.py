@@ -62,6 +62,11 @@ def _form_data(form, tap_id=""):
     }
 
 
+def _linked_feeds(tap):
+    """The indicator feeds a profile links to, skipping any that were deleted."""
+    return [f for f in (misp_store.get_indicator_feed(u) for u in tap.indicator_feeds) if f]
+
+
 def _form_context(tap=None):
     return {
         "tap": tap,
@@ -178,7 +183,7 @@ def pdf(id):
         return "Threat actor profile not found", 404
     diamond_b64 = base64.b64encode(render_diamond_png(tap)).decode("ascii")
     pir = misp_store.get_pir(tap.linked_pir_uuid) if tap.linked_pir_uuid else None
-    linked_feeds = [f for f in (misp_store.get_indicator_feed(u) for u in tap.indicator_feeds) if f]
+    linked_feeds = _linked_feeds(tap)
     html = render_template("threat_actor_profile/pdf.html", tap=tap,
                            css_url=branding.pdf_css_url(), brand=branding.brand(),
                            diamond_b64=diamond_b64, pir=pir, linked_feeds=linked_feeds)
@@ -218,7 +223,7 @@ def detail(id):
     recipients = misp_store.recipient_preview(PRODUCT_NAME, tap.tlp, tap.audience)
     pir = misp_store.get_pir(tap.linked_pir_uuid) if tap.linked_pir_uuid else None
     feedback = misp_store.list_product_feedback(tap.uuid)
-    linked_feeds = [f for f in (misp_store.get_indicator_feed(u) for u in tap.indicator_feeds) if f]
+    linked_feeds = _linked_feeds(tap)
     return render_template("threat_actor_profile/detail.html",
                            tap=tap, recipients=recipients, pir=pir, feedback=feedback,
                            linked_feeds=linked_feeds)
@@ -275,7 +280,6 @@ def notify(id):
     if tap.status != "Published":
         flash("Publish the profile before notifying recipients.", "warning")
         return redirect(url_for("threat_actor_profile.detail", id=id))
-    # Deliver to the green set: subscribed, TLP cleared, audience match.
     diamond_url = url_for("threat_actor_profile.diamond_png", id=id, _external=True)
 
     def deliver(log):
@@ -385,19 +389,29 @@ def _markdown(tap):
 
 def _linked_feeds_markdown(tap):
     """Embed each linked indicator feed (name, description, CSV) into the product
-    so it travels inside the notification rather than as a separate attachment."""
+    so it travels inside the notification rather than as a separate attachment.
+
+    A feed runs with its own limit here, as it does everywhere else, so one that
+    matches more than it shows says so rather than arriving short. A feed that
+    could not be read says that too: the stakeholder would otherwise read an
+    outage as a feed with nothing in it."""
     lines = []
-    for fuuid in tap.indicator_feeds:
-        feed = misp_store.get_indicator_feed(fuuid)
-        if feed is None:
-            continue
+    for feed in _linked_feeds(tap):
         lines += ["", f"## Indicator feed: {feed.name}", ""]
         if feed.description:
             lines += [feed.description, ""]
+        query = feed.query or {}
         try:
-            csv_text = misp_store.indicator_feed_csv_text(feed).strip()
+            rows = misp_store.search_indicators(query, server_ids=query.get("servers"))
         except Exception as exc:
-            logger.warning("Could not render feed %s for TAP %s: %s", feed.feed_id, tap.tap_id, exc)
-            csv_text = ""
-        lines += ["```", csv_text or "(no indicators)", "```", ""]
+            logger.warning("Could not read feed %s for TAP %s: %s", feed.feed_id, tap.tap_id, exc)
+            lines += ["*This feed could not be read from MISP when the product was made.*", ""]
+            continue
+        # An empty result still renders a CSV header row, which reads as a feed
+        # whose columns are all that is left of it.
+        body = misp_store.indicator_csv_text(rows).strip() if rows else "(no indicators)"
+        lines += ["```", body, "```", ""]
+        if len(rows) >= misp_store.indicator_limit(query):
+            lines += [f"*The feed's limit of {len(rows)} indicators was reached, "
+                      f"so more may match than are listed here.*", ""]
     return "\n".join(lines)

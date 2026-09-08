@@ -166,6 +166,10 @@ When tracking an actor you often want to list the infrastructure you have observ
 
 The indicator feed is another product. You build a detailed query against MISP and get back the matching list of indicators.
 
+Like the other products, it opens on a list of the feeds you have. Each row describes the feed (id, name, TLP, audience), whether it is cached and when it refreshes next, and the actions you need on it: preview the indicators, download them in any of the four formats, notify the stakeholders, edit, delete. **New feed** opens the query builder; saving a query there turns it into a product.
+
+A feed's page contains everything about it in one place. The fields at the top are the product itself, name, TLP, audience, author, linked PIR, feedback date and the caching schedule. Beside them are the product details, the threat actor profiles that embed this feed (each one a link to that product), and the PyMISP query, which updates as you change the filters. The query is one line you can read at a glance, with the full builder folded behind it, and the indicators are underneath with the `+` and `-` buttons that add an event or an organisation to the query. **Run search** replaces only the list of indicators, so the page does not reload and you keep the query in front of you. Nothing is saved until you press **Save changes**.
+
 ![docs/x-indicatorfeed1.png](docs/x-indicatorfeed1.png)
 
 A useful detail is that the feed is kept as a PyMISP query. zsazsa shows you that query and lets you copy it, so you can reuse it elsewhere.
@@ -177,6 +181,31 @@ More often you will not need to copy anything, because zsazsa gives **each feed 
 ![docs/x-indicatorfeed3.png](docs/x-indicatorfeed3.png)
 
 A typical use case: your SOC needs a set of indicators to investigate. Instead of copying them by hand or asking the SOC to get the data out of MISP, you build an indicator feed, perhaps tied to a threat actor profile, send it as a product through the notification channels, and the recipients receive it as a plain value list (deduplicated, one unique value per line) or as CSV (one row per matching attribute, with full event/server context, so a value seen on multiple events or servers appears multiple times).
+
+The limit you set on the query sizes the result table and the downloads. Add `truncate=off` when you want the whole set instead:
+
+```
+https://zsazsa.example.org/products/indicator-feed/public/<token>?truncate=off
+https://zsazsa.example.org/products/indicator-feed/public/<token>?format=csv&truncate=off
+```
+
+Without it you get the first `limit` indicators, which is what the table shows. With it you get everything that matches, up to 10000, which is the most zsazsa asks MISP for in one query.
+
+A feed comes in four formats, as a download button on the page and as `format=` on the feed URL:
+
+| Shape | What it holds |
+|---|---|
+| Values | One unique value per line. What the feed URL returns when you do not ask for a format. |
+| Type + value | The same list with `type`, a tab, then the value. Tab-separated because values carry commas. |
+| CSV | One line per matching attribute, with the event and server it came from. |
+| JSON | The feed itself (id, name, TLP), when the query ran, the count, and every indicator with its event context and tags. |
+
+```
+https://zsazsa.example.org/products/indicator-feed/public/<token>?format=json
+https://zsazsa.example.org/products/indicator-feed/public/<token>?format=tsv&truncate=off
+```
+
+By default every request for a feed runs its query against MISP. A feed that is pulled often does not need that, so it can be cached: switch **Caching** on when you save the feed and pick hourly, daily or weekly. The first request after that runs the query once, writes the result in all four formats under `data/feed_cache`, and every request until the interval passes is served from those files. A cached feed refreshes on the clock of the moment you saved it: save it at 14:16 and it refreshes at :16 past every hour, or at 14:16 each day, or on that weekday at 14:16, so feeds do not all come due at once. The feed page and the list say when each one is next due. The analyser run refreshes the feeds that have come due, so a consumer arriving after that reads a file rather than waiting for the query, and the pipeline page counts how many were refreshed. Each refresh is written to the log under `/logs`, and a feed that could not be refreshed keeps serving what it has and says so on its page and in the list, so you can see that what goes out is older than the schedule promises. A feed that goes stale between runs is refreshed by the first request for it, exactly as an uncached feed is. If that request cannot reach MISP either, the feed hands out the copy it already has rather than an empty answer: a tool pulling the URL cannot tell an empty feed from an outage and would drop every indicator it holds. The feed page and the list say that the last refresh failed, so you can see what you are looking at. The feed page shows how old the cache is, the list shows which feeds are cached and how often they refresh, and the results table on a cached feed is marked **live** because it always queries MISP while the downloads and the feed URL serve the cache. Saving a feed drops its cache, so a changed query takes effect at once, and `truncate=off` always runs the query.
 
 ### Statistics
 

@@ -1,0 +1,138 @@
+{% extends "base.html" %}
+{% from "_macros.html" import feed_downloads %}
+
+{# Indicator feeds as a product list, in the shape the other CTI products use:
+   one row per feed, the actions grouped by what they do. Building a query is a
+   page of its own, and a feed's own page is where it is edited. #}
+
+{% block title %}Indicator feeds | zsazsa CTI{% endblock %}
+{% block page_title %}Indicator feeds{% endblock %}
+
+{% block topbar_actions %}
+<a href="{{ url_for('indicator_feed.new') }}" class="btn btn-sm btn-primary">
+  <i class="fas fa-plus me-1"></i>New feed
+</a>
+{% endblock %}
+
+{% block content %}
+
+<div class="card content-card mb-3">
+  <div class="card-body py-2">
+    <form method="get" class="row g-2 align-items-end">
+      <div class="col-auto">
+        <label class="form-label small mb-1">State</label>
+        <select name="state" class="form-select form-select-sm" onchange="this.form.submit()">
+          <option value="">All states</option>
+          {% for value, label in states %}
+          <option value="{{ value }}" {{ 'selected' if state_filter == value }}>{{ label }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      {% if state_filter %}
+      <div class="col-auto">
+        <a href="{{ url_for('indicator_feed.index') }}" class="btn btn-sm btn-outline-secondary">Clear</a>
+      </div>
+      {% endif %}
+      <div class="col-auto ms-auto text-muted small">{{ feeds | length }} indicator feed{{ 's' if feeds|length != 1 }}</div>
+    </form>
+  </div>
+</div>
+
+<div class="card content-card">
+  <div class="card-body p-0">
+    {% if feeds %}
+    <div class="table-responsive">
+      <table class="table table-hover zsazsa-table mb-0">
+        <thead>
+          <tr>
+            <th style="width:100px;">ID</th>
+            <th>Name</th>
+            <th>TLP</th>
+            <th>Audience</th>
+            <th>Caching</th>
+            <th>Created</th>
+            <th class="text-end" style="width:1%;">Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for f in feeds %}
+          <tr>
+            <td>
+              <a href="{{ url_for('indicator_feed.detail', id=f.id) }}" class="text-decoration-none">
+                <span class="req-id-badge">{{ f.feed_id }}</span>
+              </a>
+            </td>
+            <td>
+              <a href="{{ url_for('indicator_feed.detail', id=f.id) }}" class="text-decoration-none fw-semibold">{{ f.name }}</a>
+              {% if f.description %}<div class="text-muted small">{{ f.description | truncate(70) }}</div>{% endif %}
+            </td>
+            <td><span class="tlp-badge tlp-{{ f.tlp | slug }}">TLP:{{ f.tlp | upper }}</span></td>
+            <td class="small">{{ f.audience or '-' }}</td>
+            <td class="small" style="white-space:nowrap;">
+              {% if f.cache_interval %}
+                <i class="fas fa-box-archive me-1 text-muted"></i>{{ f.cache_interval }}
+                {% if f.next_refresh %}
+                <div class="text-muted" style="font-size:.72rem;">next {{ f.next_refresh.strftime('%d-%m %H:%M') }}</div>
+                {% endif %}
+                {% if f.cache_error %}
+                {# What is served is older than the schedule says it should be. #}
+                <div class="text-danger" style="font-size:.72rem;" title="{{ f.cache_error.reason }}">
+                  <i class="fas fa-triangle-exclamation me-1"></i>refresh failed
+                  {{ f.cache_error.at.strftime('%d-%m %H:%M') }}
+                </div>
+                {% endif %}
+              {% else %}<span class="text-muted">not cached</span>{% endif %}
+            </td>
+            <td class="text-muted small" style="white-space:nowrap;">
+              {{ f.created_at.strftime('%d-%m-%Y') if f.created_at else '-' }}
+            </td>
+            <td class="text-end" style="white-space:nowrap;">
+              <div class="d-inline-flex flex-nowrap align-items-center justify-content-end gap-2">
+                <span class="d-inline-flex flex-nowrap gap-1">
+                  <a href="{{ url_for('indicator_feed.detail', id=f.id) }}#values"
+                     class="btn btn-xs btn-outline-secondary" title="Preview the indicators">
+                    <i class="fas fa-eye"></i>
+                  </a>
+                  {{ feed_downloads(f, size='xs') }}
+                  <form method="post" action="{{ url_for('indicator_feed.notify', id=f.id) }}" class="d-inline"
+                        onsubmit="return confirm('Send {{ f.feed_id }} to the eligible stakeholders?');">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                    <button type="submit" class="btn btn-xs btn-outline-primary" title="Notify stakeholders">
+                      <i class="fas fa-paper-plane"></i>
+                    </button>
+                  </form>
+                </span>
+                <span class="vr"></span>
+                <span class="d-inline-flex flex-nowrap gap-1">
+                  <a href="{{ url_for('indicator_feed.detail', id=f.id) }}" class="btn btn-xs btn-outline-secondary" title="Edit">
+                    <i class="fas fa-pen"></i>
+                  </a>
+                  <form method="post" action="{{ url_for('indicator_feed.delete', id=f.id) }}" class="d-inline"
+                        onsubmit="return confirm('Delete {{ f.feed_id }} ({{ f.name }})? This cannot be undone.');">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                    <button type="submit" class="btn btn-xs btn-outline-danger" title="Delete feed">
+                      <i class="fas fa-trash"></i>
+                    </button>
+                  </form>
+                </span>
+              </div>
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    {% else %}
+    <p class="text-muted small m-3 mb-0">
+      {% if state_filter %}
+      No indicator feeds in this state.
+      {% else %}
+      No indicator feeds yet. Build a query on the
+      <a href="{{ url_for('indicator_feed.new') }}">query builder</a> and save it.
+      {% endif %}
+    </p>
+    {% endif %}
+  </div>
+</div>
+
+{% endblock %}

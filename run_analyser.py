@@ -10,7 +10,7 @@ from analyser.products.flash_intel import process as process_flash_intel
 from analyser.reader import get_new_scraper_events, save_last_run
 from core.db import init_db, log_event, log_pipeline_run_start, log_pipeline_run_end
 from core.misp_client import get_misp, get_misp_webapp
-from webapp import job_store
+from webapp import feed_cache, job_store
 
 
 def load_focus_points() -> dict:
@@ -85,6 +85,13 @@ def main() -> None:
         # Advance the timestamp unconditionally so events are not reprocessed on
         # the next run, even if some failed. Errored events are visible in the DB log.
         save_last_run(run_start)
+
+        # Cached indicator feeds are re-run here rather than on a timer of their
+        # own: this run is already the scheduled MISP work of the application.
+        # Missing it only means the next consumer of a stale feed waits for the
+        # query, which is what an uncached feed does anyway.
+        feeds_refreshed = feed_cache.refresh_due()
+
         result = {
             "total_events": len(events),
             "product_created": counts.get("product_created", 0),
@@ -92,6 +99,7 @@ def main() -> None:
             "http_error": counts.get("http_error", 0),
             "no_content": counts.get("no_content", 0),
             "error": counts.get("error", 0),
+            "feed_caches_refreshed": feeds_refreshed,
         }
         log_pipeline_run_end(run_id, "completed", result)
         if job:
@@ -110,13 +118,15 @@ def main() -> None:
                                  message=f"Failed: {exc}")
         raise
     logger.info(
-        "Analyser complete: %d events - %d products, %d not relevant, %d HTTP errors, %d no content, %d errors",
+        "Analyser complete: %d events - %d products, %d not relevant, %d HTTP errors, "
+        "%d no content, %d errors, %d feed cache(s) refreshed",
         len(events),
         counts.get("product_created", 0),
         counts.get("not_relevant", 0),
         counts.get("http_error", 0),
         counts.get("no_content", 0),
         counts.get("error", 0),
+        feeds_refreshed,
     )
 
 

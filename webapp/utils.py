@@ -12,8 +12,11 @@ from werkzeug.routing import BuildError
 
 # breaks=True renders single newlines as <br>, matching the client-side preview
 # (marked with breaks:true) so multi-line fields like observed facts look the same
-# in the on-screen preview, the PDF and e-mail.
-_md = MarkdownIt("commonmark", {"breaks": True}).enable("table")
+# in the on-screen preview, the PDF and e-mail. html=False escapes raw HTML in
+# the source: the commonmark preset passes it through, and this text comes from
+# ingested articles and model output, so a <script> in it would end up in the
+# page (the md filters mark their output safe).
+_md = MarkdownIt("commonmark", {"breaks": True, "html": False}).enable("table")
 
 # A label opening a line, as briefing stories write them ("What happened: ...").
 # Only plain words count, so a colon inside a sentence or an indicator such as
@@ -61,6 +64,18 @@ def human_size(size) -> str:
         if value < 1024:
             return f"{value:.1f} {unit}"
     return f"{value / 1024:.1f} GB"
+
+
+def age_text(seconds: float) -> str:
+    """Same wording as the ago() helper the pages use client-side."""
+    minutes = round(seconds / 60)
+    if minutes < 1:
+        return "just now"
+    if minutes < 60:
+        return f"{minutes}m ago"
+    if minutes < 1440:
+        return f"{round(minutes / 60)}h ago"
+    return f"{round(minutes / 1440)}d ago"
 
 
 def dedup_lower(values: list) -> list:
