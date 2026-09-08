@@ -12,6 +12,7 @@ from requests.exceptions import RequestException
 from werkzeug.middleware.proxy_fix import ProxyFix
 
 import config
+from core import pymisp_compat  # patches PyMISP on import; create_app logs whether it did
 from webapp import audit, misp_session, org_store, sso_users, collection_cache, indicator_meta_store
 from webapp.utils import human_size, md_to_html, md_to_html_inline
 from webapp.version import APP_VERSION
@@ -47,6 +48,9 @@ def create_app():
     app.config["TEMPLATES_AUTO_RELOAD"] = True
 
     _setup_file_logging()
+    if pymisp_compat.installed:
+        logger.info("PyMISP refuses the default galaxy clusters MISP serves; dropping "
+                    "their distribution and sharing group on parse (core/pymisp_compat)")
     audit.init()
     org_store.init_db()
     sso_users.init_db()

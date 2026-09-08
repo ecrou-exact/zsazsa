@@ -1,5 +1,38 @@
 # Changelog
 
+## 1.0.3
+
+PyMISP 2.5.34.2 stopped parsing the galaxy clusters a MISP server sends, which
+left the MISP scraper collecting nothing and the galaxy pick-lists empty. zsazsa
+works on that release now, and on the earlier ones as it did before.
+
+### Upgrading
+
+Pull and restart. Nothing to migrate and no setting to change. PyMISP is not
+held below 2.5.34.2, so `pip install -r requirements.txt` moves you to it if you
+are not there yet.
+
+### Fixed
+
+- PyMISP 2.5.34.2 refuses to parse a galaxy cluster that MISP flags as
+  `default`, which is every cluster from its own galaxy library, because the
+  server sends it carrying a distribution. The rule is meant for a cluster you
+  build to send, but the same code parses what comes back, and a missing comma
+  had kept it from ever firing until that release (MISP/PyMISP#1459). Nothing
+  carrying a galaxy could be read: the MISP scraper source ended every refresh
+  at zero events with "The field 'distribution' cannot be set on a default
+  galaxy cluster" in the log, and the threat actor, sector, geography and ATT&CK
+  pick-lists came up empty on every form. zsazsa drops those two fields before
+  PyMISP sees them, and only on a release that refuses them, so an older PyMISP
+  and a fixed one to come are both left alone. Reported in issue #22.
+
+### Internal
+
+- `core/pymisp_compat.py` decides what to do by asking the installed PyMISP to
+  parse a cluster in the shape a server sends, rather than by comparing version
+  numbers, so it stops patching of its own accord once PyMISP accepts them
+  again. Tested against 2.5.8, 2.5.17.3, 2.5.32, 2.5.34.1 and 2.5.34.2.
+
 ## 1.0.2
 
 A security fix, a set of smaller ones, and the indicator feed reworked into a

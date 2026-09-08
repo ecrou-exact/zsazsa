@@ -1,6 +1,7 @@
 # Known-good versions for the 1.0.2 release, as tested on Python 3.12.
 # Lower bounds are what zsazsa needs; the pins are what it was released against.
-pymisp>=2.5,<3          # 2.5.34.1
+pymisp>=2.5,<3          # 2.5.34.2 - stopped parsing the galaxy clusters MISP
+                        # serves, worked around in core/pymisp_compat.py
 openai>=1.0,<3          # 2.38.0
 requests>=2.32,<3       # 2.33.1
 flask>=3.1,<4           # 3.1.3
