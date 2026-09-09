@@ -31,14 +31,17 @@ bp = Blueprint("indicator_feed", __name__, url_prefix="/products/indicator-feed"
 PRODUCT_NAME = "Indicator feed"
 TO_IDS_CHOICES = ["any", "yes", "no"]
 PUBLISHED_CHOICES = ["any", "yes", "no"]
-# Attribute timestamp (last change) uses MISP relative shorthand, where the
-# units are d/h/m(=minutes); a week/month is expressed in days.
-ATTR_RANGES = [("1h", "Last hour"), ("1d", "Last day"), ("2d", "Last 48 hours"),
-               ("7d", "Last week"), ("30d", "Last month")]
+# Attribute timestamp (last change) uses MISP relative shorthand, where the units
+# are d/h/m(=minutes). "Today" means since midnight, which the shorthand cannot
+# say, so misp_store sends it as today's date instead.
+ATTR_RANGES = [("1h", "Last hour"), ("today", "Today"), ("1d", "Last day"),
+               ("2d", "Last 2 days"), ("7d", "Last 7 days"),
+               ("30d", "Last 30 days"), ("90d", "Last 90 days")]
 # Event date is the event's `date` field (day granularity) and does not accept
-# relative shorthand, so these are days-back values converted to an absolute date.
-EVENT_RANGES = [("0", "Today"), ("2", "Last 48 hours"), ("7", "Last 7 days"),
-                ("30", "Last 30 days"), ("90", "Last 90 days")]
+# relative shorthand, so these are days-back values converted to an absolute
+# date. The same offers as the attribute ranges, less the hour a date cannot hold.
+EVENT_RANGES = [("0", "Today"), ("1", "Last day"), ("2", "Last 2 days"),
+                ("7", "Last 7 days"), ("30", "Last 30 days"), ("90", "Last 90 days")]
 
 # Whether the feed is served from disk or queried on every request. It is the
 # one thing about a feed that is worth filtering the list by.

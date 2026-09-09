@@ -2695,7 +2695,10 @@ def _indicator_search_kwargs(filters):
     quick = filters.get("attr_last") or ""
     attr_after = filters.get("attr_after") or ""
     attr_before = filters.get("attr_before") or ""
-    if quick:
+    if quick == "today":
+        # Since midnight, which the relative shorthand cannot express.
+        kwargs["timestamp"] = date.today().isoformat()
+    elif quick:
         kwargs["timestamp"] = quick
     elif attr_after and attr_before:
         kwargs["timestamp"] = [attr_after, attr_before]

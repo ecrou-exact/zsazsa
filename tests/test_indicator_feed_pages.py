@@ -10,7 +10,7 @@ and that the buttons on them reach the right endpoint.
 
 import tempfile
 import unittest
-from datetime import datetime
+from datetime import date, datetime
 from pathlib import Path
 from types import SimpleNamespace
 from unittest import mock
@@ -202,6 +202,29 @@ class OrgFilters(unittest.TestCase):
                 "/products/indicator-feed/org-name",
                 query_string={"value": "5e1b7d20-bbbc-456e-b270-479b29b8f09f"})
         self.assertEqual(response.get_json(), {"name": "CUDESO-PRIV"})
+
+
+class TimeRanges(unittest.TestCase):
+    """The two time filters sit side by side and offer the same windows."""
+
+    def test_they_offer_the_same_windows_apart_from_the_hour(self):
+        """An event carries a date and no time, so it cannot answer "last hour".
+        Everything else has to read the same on both rows or an analyst has to
+        work out which control means what."""
+        attr = [label for _value, label in indicator_feed.ATTR_RANGES]
+        event = [label for _value, label in indicator_feed.EVENT_RANGES]
+        self.assertEqual(attr, ["Last hour"] + event)
+
+    def test_today_is_not_the_same_window_as_the_last_day(self):
+        """Since midnight, against the last 24 hours. MISP's relative shorthand
+        only says the second, so the first goes as a date."""
+        today = date.today().isoformat()
+        self.assertEqual(
+            misp_store._indicator_search_kwargs({"attr_last": "today"})["timestamp"], today)
+        self.assertEqual(
+            misp_store._indicator_search_kwargs({"attr_last": "1d"})["timestamp"], "1d")
+        self.assertEqual(
+            misp_store._indicator_search_kwargs({"event_last": "0"})["date_from"], today)
 
 
 class QuerySummary(unittest.TestCase):
