@@ -30,17 +30,23 @@
 <div data-query-part>
   <div class="card content-card mb-4">
     <div class="card-header d-flex align-items-center justify-content-between">
+      {# The summary follows the filters as they are edited, so it is written
+         once here and rewritten by the script. Whether the editor starts folded
+         is decided on load and left alone: folding it away mid-edit would take
+         the fields out from under the analyst. #}
+      {% macro summary() %}
+      <span class="text-muted fw-normal ms-2" id="query-summary" style="font-size:.78rem;">
+        {% for part in query_summary %}<span class="font-monospace">{{ part }}</span>{% if not loop.last %} <span class="text-muted">&middot;</span> {% endif %}{% endfor %}
+      </span>
+      {% endmacro %}
       {% if query_summary %}
       {# The whole title opens the editor; the button beside it does the same. #}
       <button class="btn btn-link p-0 text-decoration-none text-reset fw-semibold text-start" type="button"
               data-bs-toggle="collapse" data-bs-target="#query-body" aria-controls="query-body">
-        <i class="fas fa-filter me-2"></i>Query
-        <span class="text-muted fw-normal ms-2" style="font-size:.78rem;">
-          {% for part in query_summary %}<span class="font-monospace">{{ part }}</span>{% if not loop.last %} <span class="text-muted">&middot;</span> {% endif %}{% endfor %}
-        </span>
+        <i class="fas fa-filter me-2"></i>Query{{ summary() }}
       </button>
       {% else %}
-      <span><i class="fas fa-filter me-2"></i>Query</span>
+      <span><i class="fas fa-filter me-2"></i>Query{{ summary() }}</span>
       {% endif %}
       <span class="d-flex align-items-center gap-2">
         {% if query_summary %}

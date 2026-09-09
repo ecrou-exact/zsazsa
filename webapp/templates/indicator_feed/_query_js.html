@@ -109,9 +109,32 @@ function refreshQuery() {
   queryTimer = setTimeout(function() {
     fetch(QUERY_URL + '?' + new URLSearchParams(new FormData(form)))
       .then(function(r) { return r.json(); })
-      .then(function(d) { if (d.query) el.textContent = d.query; })
+      .then(function(d) {
+        if (d.query) el.textContent = d.query;
+        showSummary(d.summary || []);
+      })
       .catch(function() {});
   }, 250);
+}
+
+// The phrases in the query card header. Written as text: they carry tag and
+// organisation names, which are whatever somebody typed.
+function showSummary(parts) {
+  var el = document.getElementById('query-summary');
+  if (!el) return;
+  el.textContent = '';
+  parts.forEach(function(part, i) {
+    if (i) {
+      var dot = document.createElement('span');
+      dot.className = 'text-muted';
+      dot.textContent = ' \u00b7 ';
+      el.appendChild(dot);
+    }
+    var phrase = document.createElement('span');
+    phrase.className = 'font-monospace';
+    phrase.textContent = part;
+    el.appendChild(phrase);
+  });
 }
 
 var SUGGEST_URL = SCRIPT_ROOT + '/products/indicator-feed/suggest';

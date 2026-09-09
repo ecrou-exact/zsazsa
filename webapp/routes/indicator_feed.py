@@ -211,8 +211,10 @@ def _query_summary(filters):
     if filters.get("types"):
         parts.append(", ".join(filters["types"][:3])
                      + (f" +{len(filters['types']) - 3}" if len(filters["types"]) > 3 else ""))
+    # Every list an analyst can fill, in the order the query card offers them.
     for key, word in (("tags_include", "tag"), ("tags_exclude", "excluded tag"),
-                      ("orgs_include", "org"), ("events_include", "event")):
+                      ("orgs_include", "org"), ("orgs_exclude", "excluded org"),
+                      ("events_include", "event"), ("events_exclude", "excluded event")):
         count = len(filters.get(key) or [])
         if count:
             parts.append(f"{count} {word}{'s' if count != 1 else ''}")
@@ -590,10 +592,11 @@ def pymisp_query():
     """The PyMISP call for the filters currently in the form.
 
     The card on the page is server-rendered on load and re-fetched here as the
-    analyst edits, so it always shows what misp_store would run rather than a
-    second guess at it written in the browser.
+    analyst edits.
     """
-    return jsonify({"query": misp_store.pymisp_query_string(_filters_from(request.args))})
+    filters = _filters_from(request.args)
+    return jsonify({"query": misp_store.pymisp_query_string(filters),
+                    "summary": _query_summary(filters)})
 
 
 @bp.route("/org-name")

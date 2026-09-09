@@ -236,6 +236,23 @@ class QuerySummary(unittest.TestCase):
             indicator_feed._query_summary(filters),
             ["ip-dst, domain", "1 tag", "attributes last day", "to_ids yes", "limit 500"])
 
+    def test_every_list_the_query_card_offers_is_summarised(self):
+        """An excluded organisation narrows a feed as much as an included one.
+        While three of the six lists were missing here, two different queries
+        could show the same summary."""
+        filters = dict(indicator_feed._default_filters(),
+                       tags_include=["t"], tags_exclude=["x"],
+                       orgs_include=["A"], orgs_exclude=["B"],
+                       events_include=["e"], events_exclude=["f"])
+        self.assertEqual(indicator_feed._query_summary(filters),
+                         ["1 tag", "1 excluded tag", "1 org", "1 excluded org",
+                          "1 event", "1 excluded event", "limit 100"])
+
+    def test_an_exclusion_on_its_own_is_still_a_query(self):
+        filters = dict(indicator_feed._default_filters(), orgs_exclude=["CIRCL", "eCrimeLabs"])
+        self.assertEqual(indicator_feed._query_summary(filters),
+                         ["2 excluded orgs", "limit 100"])
+
     def test_a_long_type_list_is_counted_rather_than_listed(self):
         filters = dict(indicator_feed._default_filters(), types=["a", "b", "c", "d", "e"])
         self.assertEqual(indicator_feed._query_summary(filters)[0], "a, b, c +2")
@@ -536,6 +553,17 @@ class RenderedPages(unittest.TestCase):
         self.assertEqual(query, misp_store.pymisp_query_string(
             indicator_feed._filters_from(MultiDict([("types", "ip-dst"), ("limit", "7")]))))
         self.assertIn("limit=7", query)
+
+    def test_the_query_endpoint_also_returns_the_summary(self):
+        """The one-line summary in the card header follows the filters as they
+        are edited, and rides the round trip the PyMISP card already makes."""
+        response = self.client.get("/products/indicator-feed/pymisp-query",
+                                   query_string={"types": "ip-dst", "limit": "7"})
+        body = response.get_json()
+        self.assertEqual(body["summary"],
+                         indicator_feed._query_summary(indicator_feed._filters_from(
+                             MultiDict([("types", "ip-dst"), ("limit", "7")]))))
+        self.assertIn("limit 7", body["summary"])
 
     def test_the_card_shows_the_limit_the_search_is_capped_to(self):
         """A limit above the cap is clamped before MISP sees it, so the card has
