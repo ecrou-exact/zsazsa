@@ -41,7 +41,37 @@ function addChip(field, value) {
     store.appendChild(h);
     tiRender(field);
     queryChanged();
+    nameOrg(field, value);
   }
+}
+
+// An organisation UUID is kept as the organisation it names. The server does
+// that for what it renders, but a chip is added here, so the chip goes in as
+// typed and is renamed when the answer arrives rather than waiting on it.
+var ORG_NAME_URL = SCRIPT_ROOT + '/products/indicator-feed/org-name';
+var UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+function nameOrg(field, value) {
+  if (field.indexOf('orgs_') !== 0 || !UUID_RE.test(value)) return;
+  fetch(ORG_NAME_URL + '?value=' + encodeURIComponent(value))
+    .then(function(r) { return r.json(); })
+    .then(function(d) {
+      var store = document.getElementById('ti-store-' + field);
+      if (!d.name || d.name === value || !store) return;
+      var inputs = Array.from(store.querySelectorAll('input[type="hidden"]'));
+      var pasted = inputs.find(function(i) { return i.value === value; });
+      if (!pasted) return;
+      // The name may already be on the row, in which case the UUID is a
+      // second chip for the same organisation and simply goes.
+      if (inputs.some(function(i) { return i.value === d.name; })) {
+        pasted.remove();
+      } else {
+        pasted.value = d.name;
+      }
+      tiRender(field);
+      queryChanged();
+    })
+    .catch(function() {});
 }
 // Anything that changes the query goes through here: the results on screen were
 // answered by the old one, and the PyMISP card has to follow along. The chips
@@ -286,6 +316,16 @@ document.addEventListener('DOMContentLoaded', function() {
     });
   }
 
+  // Said as text, not as markup: it carries whatever the server reported and
+  // that reaches here as a message rather than as something to render.
+  function showCountError(el, text) {
+    var span = document.createElement('span');
+    span.className = 'text-danger';
+    span.textContent = 'count failed: ' + text;
+    el.innerHTML = '';
+    el.appendChild(span);
+  }
+
   // On-demand total count (MISP has no count API, so this is a separate query
   // the analyst triggers rather than running on every search).
   function showTotal(btn) {
@@ -297,7 +337,7 @@ document.addEventListener('DOMContentLoaded', function() {
       .then(function(r) { return r.json(); })
       .then(function(d) {
         btn.classList.add('d-none');
-        if (d.error) { resultEl.innerHTML = '<span class="text-danger">count failed</span>'; return; }
+        if (d.error) { showCountError(resultEl, d.error); return; }
         var html = '· ' + d.total + (d.capped ? '+' : '') + ' match the query';
         if (d.total > shown) {
           html += ' <span class="text-warning ms-1" title="Raise the limit to at least ' + d.total +
@@ -308,7 +348,7 @@ document.addEventListener('DOMContentLoaded', function() {
       .catch(function() {
         btn.disabled = false;
         btn.innerHTML = '<i class="fas fa-calculator me-1"></i>Show total';
-        resultEl.innerHTML = '<span class="text-danger">count failed</span>';
+        showCountError(resultEl, 'the count could not be run');
       });
   }
 

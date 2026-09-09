@@ -167,6 +167,43 @@ class PageContext(unittest.TestCase):
         self.assertIn(f"limit {misp_store.DEFAULT_INDICATOR_LIMIT}", context["summary"])
 
 
+class OrgFilters(unittest.TestCase):
+    """A pasted organisation UUID is kept as the organisation it names, so the
+    chips, the summary and the PyMISP card all say who rather than which id."""
+
+    def _filters(self, **args):
+        pairs = [(k, v) for k, vs in args.items() for v in vs]
+        return indicator_feed._filters_from(MultiDict(pairs))
+
+    def test_a_uuid_is_kept_as_the_organisation_it_names(self):
+        with mock.patch.object(misp_store, "organisation_name", return_value="CUDESO-PRIV"):
+            filters = self._filters(orgs_include=["5e1b7d20-bbbc-456e-b270-479b29b8f09f"])
+        self.assertEqual(filters["orgs_include"], ["CUDESO-PRIV"])
+
+    def test_a_name_is_left_alone_and_costs_no_lookup(self):
+        with mock.patch.object(misp_store, "organisation_name", return_value="") as lookup:
+            filters = self._filters(orgs_exclude=["CIRCL"])
+        self.assertEqual(filters["orgs_exclude"], ["CIRCL"])
+        lookup.assert_called_once_with("CIRCL")
+
+    def test_a_uuid_no_server_knows_stays_as_it_was_typed(self):
+        with mock.patch.object(misp_store, "organisation_name", return_value=""):
+            filters = self._filters(orgs_include=["00000000-0000-0000-0000-000000000000"])
+        self.assertEqual(filters["orgs_include"], ["00000000-0000-0000-0000-000000000000"])
+
+    def test_the_page_can_ask_for_the_name_of_a_chip_it_just_added(self):
+        """A chip is built in the browser and does not pass through the filters
+        until the feed is saved, so the page looks the name up on its own."""
+        app = Flask(__name__)
+        app.secret_key = "test"
+        app.register_blueprint(indicator_feed.bp)
+        with mock.patch.object(misp_store, "organisation_name", return_value="CUDESO-PRIV"):
+            response = app.test_client().get(
+                "/products/indicator-feed/org-name",
+                query_string={"value": "5e1b7d20-bbbc-456e-b270-479b29b8f09f"})
+        self.assertEqual(response.get_json(), {"name": "CUDESO-PRIV"})
+
+
 class QuerySummary(unittest.TestCase):
     def test_it_reads_as_a_sentence_of_filters(self):
         filters = dict(indicator_feed._default_filters(),
@@ -186,8 +223,14 @@ class QuerySummary(unittest.TestCase):
         self.assertEqual(indicator_feed._query_summary(filters)[:2],
                          ["attributes 2026-01-01 to …", "events last 7 days"])
 
-    def test_an_empty_query_still_names_the_limit(self):
-        self.assertEqual(indicator_feed._query_summary(indicator_feed._default_filters()), ["limit 100"])
+    def test_a_query_that_filters_nothing_has_no_summary(self):
+        """The summary is what the query card collapses behind, so a new feed
+        whose only "filter" is the default limit opens with the builder shown."""
+        self.assertEqual(indicator_feed._query_summary(indicator_feed._default_filters()), [])
+
+    def test_one_filter_is_enough_to_summarise_and_the_limit_comes_along(self):
+        filters = dict(indicator_feed._default_filters(), types=["ip-dst"])
+        self.assertEqual(indicator_feed._query_summary(filters), ["ip-dst", "limit 100"])
 
 
 
@@ -255,7 +298,8 @@ class RenderedPages(unittest.TestCase):
         with mock.patch.object(misp_store, "get_indicator_feed", return_value=feed), \
              mock.patch.object(misp_store, "get_pir", return_value=None), \
              mock.patch.object(misp_store, "indicator_feed_servers",
-                               return_value=[{"id": "s1", "label": "One", "url": "u", "enabled": True}]):
+                               return_value=[{"id": "s1", "label": "One", "url": "u", "enabled": True,
+                                              "store": False, "usable": True}]):
             html = self.client.get(f"/products/indicator-feed/{_UUID}").data
         form = BeautifulSoup(html, "html.parser").find("form", id="indicator-form")
         posted = {i["name"] for i in form.select("input[name], select[name]")}
@@ -330,7 +374,8 @@ class RenderedPages(unittest.TestCase):
         with mock.patch.object(misp_store, "get_indicator_feed", return_value=_feed(query=query)), \
              mock.patch.object(misp_store, "get_pir", return_value=None), \
              mock.patch.object(misp_store, "indicator_feed_servers",
-                               return_value=[{"id": "s1", "label": "One", "url": "u", "enabled": True}]):
+                               return_value=[{"id": "s1", "label": "One", "url": "u", "enabled": True,
+                                              "store": False, "usable": True}]):
             html = self.client.get(f"/products/indicator-feed/{_UUID}").data
         soup = BeautifulSoup(html, "html.parser")
         boxes = soup.select("[data-query-part]")

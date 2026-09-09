@@ -60,7 +60,7 @@
     </div>
     {% elif rows %}
     <div class="table-responsive">
-      <table class="table table-hover zsazsa-table mb-0" id="results-table" style="font-size:.85rem;">
+      <table class="table table-hover zsazsa-table mb-0" id="results-table" style="font-size:.725rem;">
         <thead>
           <tr>
             <th data-sort="0">Server <i class="fas fa-sort fa-xs sort-idle sort-ind"></i></th>
@@ -70,8 +70,10 @@
             <th data-sort="4">Event date <i class="fas fa-sort fa-xs sort-idle sort-ind"></i></th>
             <th data-sort="5" data-numeric="1" data-dir="desc">Attribute timestamp <i class="fas fa-sort-down fa-xs sort-ind"></i></th>
             <th data-sort="6">Type <i class="fas fa-sort fa-xs sort-idle sort-ind"></i></th>
-            <th data-sort="7">Value <i class="fas fa-sort fa-xs sort-idle sort-ind"></i></th>
             <th>to_ids</th>
+            {# Sorting is by cell index, so Value keeps step with the column
+               inserted before it. #}
+            <th data-sort="8">Value <i class="fas fa-sort fa-xs sort-idle sort-ind"></i></th>
           </tr>
         </thead>
         <tbody>
@@ -101,11 +103,11 @@
             <td class="text-muted">{{ r.event_date }}</td>
             <td class="text-muted" data-v="{{ r._ts }}">{{ r.attribute_timestamp }}</td>
             <td><span class="badge text-bg-light text-muted">{{ r.type }}</span></td>
-            <td><strong>{{ r.value }}</strong></td>
             <td>
               {% if r.to_ids %}<i class="fas fa-check text-success" title="to_ids"></i>
               {% else %}<i class="fas fa-xmark text-muted" title="not to_ids"></i>{% endif %}
             </td>
+            <td><strong>{{ r.value }}</strong></td>
           </tr>
           {% endfor %}
         </tbody>

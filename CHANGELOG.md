@@ -1,5 +1,50 @@
 # Changelog
 
+## 1.0.4
+
+An indicator feed asking MISP for two tags at once came back empty while
+thousands of indicators matched. Along with that, several things around the
+query that were wrong or unclear, and a count that said only "count failed".
+
+### Upgrading
+
+Pull and restart. Nothing to migrate and no setting to change. The MISP webapp store is  now also included in feeds, a cached feed shows after its next refresh.
+
+### Fixed
+
+- A feed with two or more included tags returned nothing while plenty matched.
+  The query now uses PyMISP's `build_complex_query`.
+- A feed that excludes the warninglist handed back fewer indicators than its
+  limit asked for: MISP applies the limit and then drops the warninglisted
+  values.
+- The indicator count said "count failed" and nothing else. It now says which
+  server failed and how, for example "MISP-Intern did not answer within 30s". A
+  failed search says the same instead of "no MISP server answered".
+- An organisation UUID pasted into the query is shown as the organisation it
+  names.
+- A MISP server configured without an API key was left out of the indicator
+  feed's server list rather than shown as unusable, so enabling it looked like
+  it had done nothing. It is listed now, greyed out and marked "No API key".
+
+### Added
+
+- zsazsa's own MISP is one of the servers an indicator feed can be built from.
+
+### Changed
+
+- An indicator that sits on more than one server is reported once, by the first
+  server in the list that carries it.
+- The tags and organisations pickers say what they mean: every tag on the plus
+  row has to be there and none of the minus row, while organisations are any of
+  them, which is the opposite reading of two controls that look identical.
+- The results table is a little smaller, and to_ids sits next to the type rather
+  than at the far end.
+
+### Internal
+
+- The indicator query is built from PyMISP arguments throughout, with no MISP
+  REST parameter names mixed in.
+
 ## 1.0.3
 
 PyMISP 2.5.34.2 stopped parsing the galaxy clusters a MISP server sends, which

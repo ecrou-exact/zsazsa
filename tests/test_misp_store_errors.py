@@ -82,20 +82,35 @@ class SearchOutages(unittest.TestCase):
             clients.append((f"s{i}", f"S{i}", "https://misp.example", client))
         return clients
 
-    def test_it_raises_when_no_server_answers(self):
+    def test_it_raises_naming_every_server_and_what_happened(self):
+        """The reason is printed on the page, so it says which servers failed
+        and how, rather than leaving the analyst to go and read the log."""
         with mock.patch.object(misp_store, "_indicator_feed_clients",
                                return_value=self._clients(True, True)):
             with self.assertRaises(RuntimeError) as caught:
                 misp_store.search_indicators({"limit": 10})
-        self.assertEqual(str(caught.exception), "no MISP server answered")
+        self.assertEqual(str(caught.exception),
+                         "S0 could not be reached; S1 could not be reached")
 
-    def test_it_raises_when_there_is_no_server_to_ask(self):
+    def test_it_raises_when_nothing_is_configured_at_all(self):
         """The analyst reads this reason on the page, and an install with no
         servers yet is a different problem from one that cannot be reached."""
-        with mock.patch.object(misp_store, "_indicator_feed_clients", return_value=[]):
+        with mock.patch.object(misp_store, "_indicator_feed_clients", return_value=[]), \
+             mock.patch.object(misp_store, "_feed_server_configs", return_value=[]):
             with self.assertRaises(RuntimeError) as caught:
                 misp_store.search_indicators({"limit": 10})
         self.assertIn("no MISP server is configured", str(caught.exception))
+
+    def test_it_says_so_when_the_feed_names_a_server_that_is_gone(self):
+        """A saved feed pins the servers it was built from. One of them being
+        removed from the configuration is not the same as having none at all,
+        and saying so sends the analyst to the feed rather than to the settings."""
+        with mock.patch.object(misp_store, "_indicator_feed_clients", return_value=[]), \
+             mock.patch.object(misp_store, "_feed_server_configs",
+                               return_value=[{"id": "still-here", "url": "u", "api_key": "k"}]):
+            with self.assertRaises(RuntimeError) as caught:
+                misp_store.search_indicators({"limit": 10}, server_ids=["gone"])
+        self.assertIn("none of the MISP servers this feed asks for", str(caught.exception))
 
     def test_one_server_answering_is_still_an_answer(self):
         with mock.patch.object(misp_store, "_indicator_feed_clients",

@@ -63,6 +63,18 @@ def _default_filters():
     return f
 
 
+def _resolve_org_uuids(f):
+    """Read any organisation UUID in the filters back as the organisation named.
+
+    MISP takes a name or a UUID, so the name is what is kept: it is what the
+    chips, the query summary and the PyMISP card then show. Anything that is
+    not a UUID, or a UUID no server knows, is left exactly as it was typed.
+    """
+    for key in ("orgs_include", "orgs_exclude"):
+        f[key] = [misp_store.organisation_name(v) or v for v in f[key]]
+    return f
+
+
 def _filters_from(src):
     """Build the filter dict from a request args/form MultiDict."""
     f = _default_filters()
@@ -76,7 +88,7 @@ def _filters_from(src):
         f["limit"] = int(src.get("limit") or misp_store.DEFAULT_INDICATOR_LIMIT)
     except (TypeError, ValueError):
         f["limit"] = misp_store.DEFAULT_INDICATOR_LIMIT
-    return f
+    return _resolve_org_uuids(f)
 
 
 def _merge_filters(stored):
@@ -85,7 +97,8 @@ def _merge_filters(stored):
     for k, v in (stored or {}).items():
         if k in f:
             f[k] = v
-    return f
+    # A feed saved before this, or edited straight in MISP, can hold UUIDs.
+    return _resolve_org_uuids(f)
 
 
 def _has_query(f):
@@ -183,7 +196,14 @@ _TIME_FILTERS = (
 
 
 def _query_summary(filters):
-    """The query as a handful of readable phrases, for the one-line preview."""
+    """The query as a handful of readable phrases, for the one-line preview.
+
+    Empty when nothing is filtered, which is what folds the builder away behind
+    it: a limit on its own is not a query worth summarising, and a feed being
+    built wants the builder open rather than one click away.
+    """
+    if not _has_query(filters):
+        return []
     parts = []
     if filters.get("types"):
         parts.append(", ".join(filters["types"][:3])
@@ -556,9 +576,10 @@ def count():
     try:
         total, capped = misp_store.count_indicators(filters, server_ids=filters.get("servers"))
         return jsonify({"total": total, "capped": capped})
-    except Exception:
+    except Exception as exc:
         logger.exception("Indicator count failed")
-        return jsonify({"error": "count failed"}), 500
+        # The same wording the results card shows when a search cannot be run.
+        return jsonify({"error": str(exc)}), 500
 
 
 @bp.route("/pymisp-query")
@@ -570,6 +591,16 @@ def pymisp_query():
     second guess at it written in the browser.
     """
     return jsonify({"query": misp_store.pymisp_query_string(_filters_from(request.args))})
+
+
+@bp.route("/org-name")
+def org_name():
+    """The organisation a UUID names, for the chip the browser just added.
+
+    _filters_from does the same thing for what the server renders, but a chip
+    is built in the page and never passes through it until the feed is saved.
+    """
+    return jsonify({"name": misp_store.organisation_name(request.args.get("value", ""))})
 
 
 @bp.route("/suggest")

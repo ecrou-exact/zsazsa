@@ -27,19 +27,36 @@
     {% if servers %}
     <div class="d-flex flex-column gap-2">
       {% for s in servers %}
-      <label class="d-flex align-items-center gap-2 border rounded px-3 py-2 mb-0" style="cursor:pointer;">
+      <label class="d-flex align-items-center gap-2 border rounded px-3 py-2 mb-0"
+             style="cursor:{{ 'not-allowed' if not s.usable else 'pointer' }};{{ 'opacity:.55;' if not s.usable }}">
         <input class="form-check-input mt-0" type="checkbox" name="servers" value="{{ s.id }}"
-               {{ 'checked' if (not filters.servers) or (s.id in filters.servers) }}>
+               {{ 'disabled' if not s.usable }}
+               {{ 'checked' if s.usable and ((not filters.servers) or (s.id in filters.servers)) }}>
+        {# zsazsa's own MISP is not a collection source like the others, so it
+           does not look like one. #}
+        {% if s.store %}
+        <i class="fas fa-database text-primary" title="zsazsa's own MISP"></i>
+        {% else %}
         <i class="fas fa-server text-muted"></i>
+        {% endif %}
         <span class="fw-semibold">{{ s.label }}</span>
         <span class="text-muted small font-monospace">{{ s.url }}</span>
-        {% if s.enabled %}
+        {% if not s.usable %}
+        <span class="badge source-disabled ms-auto" style="font-size:.7rem;"
+              title="Configured without an API key, so it cannot be queried. Add one under Settings → Collection sources.">
+          <i class="fas fa-key me-1"></i>No API key
+        </span>
+        {% elif s.enabled %}
         <span class="badge source-enabled ms-auto" style="font-size:.7rem;"><i class="fas fa-circle-check me-1"></i>Enabled</span>
         {% else %}
         <span class="badge source-disabled ms-auto" style="font-size:.7rem;"><i class="fas fa-circle-pause me-1"></i>Disabled</span>
         {% endif %}
       </label>
       {% endfor %}
+    </div>
+    <div class="form-text">
+      An indicator on more than one of these is reported once, by the first
+      server in the list that carries it.
     </div>
     {% else %}
     <p class="text-muted small mb-0">No MISP servers configured. Add them under Settings → Collection sources.</p>

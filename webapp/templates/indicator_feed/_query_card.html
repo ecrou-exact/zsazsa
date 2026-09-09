@@ -68,26 +68,38 @@
           <div class="qf-field-label">Tags <span class="qf-hint fw-normal">(event or attribute)</span></div>
           <div class="qf-inex">
             <div class="qf-inex-row inc">
-              <span class="qf-inex-tag" title="Must have">&plus;</span>
-              {{ tag_input('tags_include', values=filters.tags_include, datalist_id='dl-tags_include', placeholder='must have…') }}
+              <span class="qf-inex-tag" title="Must carry every one of these">&plus;</span>
+              {{ tag_input('tags_include', values=filters.tags_include, datalist_id='dl-tags_include', placeholder='must have all of these…') }}
             </div>
             <div class="qf-inex-row exc">
-              <span class="qf-inex-tag" title="Must not have">&minus;</span>
-              {{ tag_input('tags_exclude', values=filters.tags_exclude, datalist_id='dl-tags_exclude', placeholder='must not have…') }}
+              <span class="qf-inex-tag" title="Must carry none of these">&minus;</span>
+              {{ tag_input('tags_exclude', values=filters.tags_exclude, datalist_id='dl-tags_exclude', placeholder='must have none of these…') }}
             </div>
+          </div>
+          <div class="qf-hint mt-1">
+            All of them, not any of them: an indicator has to carry
+            <strong>every</strong> tag on the <span class="text-success">&plus;</span> row
+            and <strong>none</strong> on the <span class="text-warning">&minus;</span> row.
           </div>
         </div>
         <div class="col-md-6">
           <div class="qf-field-label">Organisations</div>
           <div class="qf-inex">
             <div class="qf-inex-row inc">
-              <span class="qf-inex-tag" title="From">&plus;</span>
+              <span class="qf-inex-tag" title="From any of these">&plus;</span>
               {{ tag_input('orgs_include', values=filters.orgs_include, datalist_id='dl-orgs_include', placeholder='from…') }}
             </div>
             <div class="qf-inex-row exc">
-              <span class="qf-inex-tag" title="Not from">&minus;</span>
+              <span class="qf-inex-tag" title="Not from any of these">&minus;</span>
               {{ tag_input('orgs_exclude', values=filters.orgs_exclude, datalist_id='dl-orgs_exclude', placeholder='not from…') }}
             </div>
+          </div>
+          <div class="qf-hint mt-1">
+            Any of them, not all of them: two organisations on the
+            <span class="text-success">&plus;</span> row means from the first
+            <strong>or</strong> the second. The <span class="text-warning">&minus;</span>
+            row keeps out everything from any organisation on it.
+            A UUID pasted here is shown as the organisation it names.
           </div>
         </div>
       </div>
@@ -156,7 +168,8 @@
         <span class="vr mx-1"></span>
         <label class="d-inline-flex align-items-center gap-1 mb-0" style="font-size:.82rem;">
           <input class="form-check-input mt-0" type="checkbox" name="enforce_warninglist" value="yes" id="enforce-wl"
-                 {{ 'checked' if filters.enforce_warninglist == 'yes' }}>
+                 {{ 'checked' if filters.enforce_warninglist == 'yes' }}
+                 title="Drop values that hit one of MISP's warninglists, the lists of things that are almost never indicators.">
           Exclude warninglist
         </label>
         <span class="vr mx-1"></span>

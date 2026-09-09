@@ -2398,36 +2398,102 @@ def delete_threat_actor_profile(uuid):
 
 # ── Indicator-feed MISP servers (the data-collection sources) ────────────────
 
-def indicator_feed_servers():
-    """Selectable MISP servers for the indicator feed: the configured data
-    collection servers (config.MISP_SERVERS) that have a URL and API key.
+# zsazsa's own MISP is one of the servers a feed can query, on unless an analyst
+# says otherwise, and first: a value on several servers is reported by the first.
+WEBAPP_STORE_ID = "zsazsa-store"
 
-    Returns dicts with id, label, url and enabled (no secrets).
+
+def _server_id(s):
+    """A server's id, falling back to its label and then its URL."""
+    return s.get("id") or s.get("label") or s.get("url")
+
+
+def _server_usable(s):
+    """Whether a configured server can actually be queried."""
+    return bool(s.get("url") and s.get("api_key"))
+
+
+def _webapp_store_server():
+    """The webapp's own MISP as a server entry, or None when it has no keys."""
+    url = (getattr(config, "MISP_WEBAPP_URL", "") or "").strip()
+    key = (getattr(config, "MISP_WEBAPP_KEY", "") or "").strip()
+    if not (url and key):
+        return None
+    return {
+        "id": WEBAPP_STORE_ID,
+        "label": "MISP webapp store",
+        "url": url,
+        "api_key": key,
+        "verify_tls": getattr(config, "MISP_WEBAPP_VERIFYCERT", True),
+        "enabled": True,
+        "store": True,
+    }
+
+
+def _feed_server_configs():
+    """Every MISP a feed can query, in the order their results take precedence:
+    zsazsa's own store first, then the collection sources. A source that has
+    taken the store's id keeps it, so one id never names two servers."""
+    store = _webapp_store_server()
+    servers = list(getattr(config, "MISP_SERVERS", []) or [])
+    if store and not any(_server_id(s) == WEBAPP_STORE_ID for s in servers):
+        return [store] + servers
+    return servers
+
+
+def _feed_client(s):
+    """A PyMISP client for one server, cached per request the way _misp() is.
+
+    Building one costs a round trip. Keyed on the connection rather than on the
+    server id, so two servers written with the same id still get one each.
+    """
+    key = (s["url"], s["api_key"])
+    try:
+        from flask import g
+        if not hasattr(g, "_feed_clients"):
+            g._feed_clients = {}
+        cache = g._feed_clients
+    except RuntimeError:
+        cache = {}
+    if key not in cache:
+        cache[key] = PyMISP(s["url"], s["api_key"], s.get("verify_tls", True), timeout=HTTP_TIMEOUT)
+    return cache[key]
+
+
+def indicator_feed_servers():
+    """Selectable MISP servers for the indicator feed, in precedence order.
+
+    Returns dicts with id, label, url, enabled, store and usable (no secrets).
+    A server without an API key is listed rather than hidden, marked unusable:
+    it is configured, an analyst can see it is there, and silently leaving it out
+    only reads as the setting not having worked.
     """
     servers = []
-    for s in getattr(config, "MISP_SERVERS", []) or []:
-        if not (s.get("url") and s.get("api_key")):
-            continue
+    for s in _feed_server_configs():
         servers.append({
-            "id": s.get("id") or s.get("label") or s.get("url"),
+            "id": _server_id(s),
             "label": s.get("label") or s.get("url"),
             "url": s.get("url"),
             "enabled": bool(s.get("enabled", True)),
+            "store": bool(s.get("store")),
+            "usable": _server_usable(s),
         })
     return servers
 
 
 def _indicator_feed_clients(server_ids=None):
-    """Build (id, label, url, client) for the selected servers.
+    """Build (id, label, url, client) for the selected servers, in precedence
+    order.
 
     `server_ids` selects specific servers; when falsy, all enabled servers are
-    used. Servers that cannot be reached are skipped (logged).
+    used. Servers with no API key, and servers that cannot be reached, are
+    skipped (logged).
     """
     wanted = set(server_ids or [])
     clients = []
-    for s in getattr(config, "MISP_SERVERS", []) or []:
-        sid = s.get("id") or s.get("label") or s.get("url")
-        if not (s.get("url") and s.get("api_key")):
+    for s in _feed_server_configs():
+        sid = _server_id(s)
+        if not _server_usable(s):
             continue
         if wanted:
             if sid not in wanted:
@@ -2435,7 +2501,7 @@ def _indicator_feed_clients(server_ids=None):
         elif not s.get("enabled", True):
             continue
         try:
-            client = PyMISP(s["url"], s["api_key"], s.get("verify_tls", True), timeout=HTTP_TIMEOUT)
+            client = _feed_client(s)
         except Exception as exc:
             logger.warning("Indicator feed: cannot connect to MISP server %r (%s): %s", sid, s.get("url"), exc)
             continue
@@ -2463,6 +2529,42 @@ def fetch_misp_organisations():
         orgs = client.organisations(scope="all", pythonify=True)
         return [] if not orgs or isinstance(orgs, dict) else [getattr(o, "name", "") for o in orgs]
     return _union_over_servers(_orgs)
+
+
+_org_name_cache: dict = {}  # org uuid -> name, "" when no server knows it
+_org_name_ts: float = 0.0
+_ORG_NAME_TTL = 600  # seconds, as the galaxy lists use
+
+
+def organisation_name(uuid: str) -> str:
+    """The name of the MISP organisation with this UUID, "" for anything else.
+
+    MISP takes a name or a UUID in a query, but a UUID says nothing about whose
+    data a feed carries. Looked up once per UUID, misses included, so a query
+    holding one does not ask again on every keystroke.
+    """
+    global _org_name_ts
+    uuid = _extract_uuid(uuid)
+    if not uuid:
+        return ""
+    now = time.time()
+    if now - _org_name_ts >= _ORG_NAME_TTL:
+        _org_name_cache.clear()
+        _org_name_ts = now
+    if uuid in _org_name_cache:
+        return _org_name_cache[uuid]
+    name = ""
+    for sid, _label, _url, client in _indicator_feed_clients(None):
+        try:
+            org = client.get_organisation(uuid, pythonify=True)
+        except Exception as exc:
+            logger.warning("Could not read organisation %s from %s: %s", uuid, sid, exc)
+            continue
+        name = getattr(org, "name", "") or ""
+        if name:
+            break
+    _org_name_cache[uuid] = name
+    return name
 
 
 def fetch_misp_tags():
@@ -2506,8 +2608,9 @@ def _attributes_from(raw):
 def _tag_filtered(attrs, filters):
     """Return the attributes passing the feed's tag include/exclude filters.
 
-    MISP tag search is OR-only, so "must carry all of these tags" and the
-    exclusions are applied here, on the fetched attributes.
+    The query asks MISP for the same thing, so this normally keeps every row it
+    is given. It stays because a feed can span several MISP servers and the
+    filter has to mean the same on all of them.
     """
     tags_inc = filters.get("tags_include") or []
     tags_exc = filters.get("tags_exclude") or []
@@ -2529,8 +2632,10 @@ def _tag_filtered(attrs, filters):
 # result table, and the exports follow it unless they ask for everything.
 DEFAULT_INDICATOR_LIMIT = 100
 
-# The most one search asks MISP for. Every attribute arrives with its event, so
-# a result set is held in memory whole: 10000 rows is already a few hundred MB.
+# The most one search asks a server for. Every attribute arrives with its event
+# and the result set is held in memory whole, so 10000 rows is already a few
+# hundred MB, and a feed reading several servers holds that much again for each
+# of them before the values are de-duplicated.
 MAX_SEARCH_LIMIT = 10000
 
 
@@ -2556,6 +2661,9 @@ def _indicator_search_kwargs(filters):
     """
     kwargs = {
         "controller": "attributes",
+        # Plain json, not PyMISP objects: a feed pulls up to MAX_SEARCH_LIMIT
+        # attributes with their events and reads a handful of fields off each,
+        # which is the case PyMISP's warning about pythonify and RAM describes.
         "pythonify": False,
         "include_context": True,
         "limit": indicator_limit(filters),
@@ -2571,9 +2679,14 @@ def _indicator_search_kwargs(filters):
     org_terms = list(filters.get("orgs_include") or []) + [f"!{o}" for o in filters.get("orgs_exclude") or []]
     if org_terms:
         kwargs["org"] = org_terms
-    tag_terms = list(filters.get("tags_include") or []) + [f"!{t}" for t in filters.get("tags_exclude") or []]
-    if tag_terms:
-        kwargs["tags"] = tag_terms
+    # A flat list of tags is an OR, and MISP applies the limit to that, so two
+    # included tags could cut every attribute carrying both out of the answer.
+    # build_complex_query is PyMISP's own helper for the AND/NOT form.
+    tags_inc = list(filters.get("tags_include") or [])
+    tags_exc = list(filters.get("tags_exclude") or [])
+    if tags_inc or tags_exc:
+        kwargs["tags"] = PyMISP.build_complex_query(and_parameters=tags_inc,
+                                                    not_parameters=tags_exc)
     event_terms = list(filters.get("events_include") or []) + [f"!{e}" for e in filters.get("events_exclude") or []]
     if event_terms:
         kwargs["eventid"] = event_terms
@@ -2707,8 +2820,10 @@ def indicator_export(rows, fmt, feed=None) -> str:
 def indicator_values_text(rows) -> str:
     """One line per unique value, in first-seen order.
 
-    The same value can come back on several attributes, events or servers, and
-    a plain value list has no context to tell them apart. The CSV keeps them all.
+    The same value can come back on several attributes and events, and a plain
+    value list has no context to tell them apart. The CSV keeps them all. It no
+    longer comes back from several servers: search_indicators reports a value
+    once, by the first server carrying it.
     """
     return "\n".join(dict.fromkeys(str(r.get("value", "")) for r in rows))
 
@@ -2727,7 +2842,8 @@ def indicator_json_text(rows, feed=None) -> str:
     """The result as one JSON document: what it is, when it ran, and the rows.
 
     Every matching attribute is listed, as in the CSV, so a value seen on
-    several events appears once per event with its own context.
+    several events appears once per event with its own context, and each one
+    names the server it came from and links into it.
     """
     doc = {}
     if feed is not None:
@@ -2742,9 +2858,9 @@ def indicator_json_text(rows, feed=None) -> str:
 def indicator_csv_text(rows) -> str:
     """Result rows as CSV text.
 
-    One line per matching attribute, so a value found on several events or
-    servers appears once per line with its own context. The plain-text export
-    de-duplicates instead."""
+    One line per matching attribute, so a value found on several events appears
+    once per line with its own context, each naming the server it came from. The
+    plain-text export de-duplicates instead."""
     buf = io.StringIO()
     writer = csv.writer(buf)
     writer.writerow([header for _, header in INDICATOR_FEED_COLUMNS])
@@ -2753,28 +2869,77 @@ def indicator_csv_text(rows) -> str:
     return buf.getvalue()
 
 
-def _no_answer_reason(clients, failed) -> str:
+def _server_failure(exc) -> str:
+    """Why one MISP server did not answer, in a few words for the page.
+
+    The traceback belongs in the log. Matching on the class name covers
+    requests, urllib3 and PyMISP without importing their exception trees.
+    """
+    name = type(exc).__name__
+    if "Timeout" in name:
+        return f"did not answer within {HTTP_TIMEOUT}s"
+    if "Connection" in name or "SSL" in name:
+        return "could not be reached"
+    return f"could not be queried ({name})"
+
+
+def _refill_limit(wanted, got):
+    """The limit to ask again with when the warninglist left the page short.
+
+    MISP applies the limit and drops the warninglisted values from what it
+    fetched, so asking for the limit answers short. Scale by what survived, and
+    half as much again because the warninglisted share grows further down the
+    set: a fifth left a limit of 100 still coming back with 91.
+    """
+    return min(MAX_SEARCH_LIMIT, int(wanted * wanted / max(got, 1) * 1.5) + 1)
+
+
+def _no_answer_reason(clients, failures) -> str:
     """Why nothing was actually asked, or "" when a server did answer.
 
     An outage otherwise looks exactly like a query that matches nothing, which
     the caller must not take for an answer: the feed cache would store it, and
     the results table would claim the query found nothing. The reason reaches
-    the analyst, so it says which of the two happened.
+    the analyst, so it says which of the two happened, and which server.
     """
     if not clients:
+        if _feed_server_configs():
+            return "none of the MISP servers this feed asks for can be queried"
         return "no MISP server is configured for indicator feeds"
-    if failed == len(clients):
-        return "no MISP server answered"
+    if len(failures) == len(clients):
+        return "; ".join(failures)
     return ""
+
+
+def _server_attributes(client, kwargs, wanted, sid):
+    """What one server answers with, filled up to `wanted` where it can be.
+
+    Only a query that has MISP drop the warninglisted values comes back short,
+    and _refill_limit declines to raise a limit already at the cap.
+    """
+    attrs = _attributes_from(client.search(**kwargs))
+    if not kwargs.get("enforce_warninglist") or len(attrs) >= wanted:
+        return attrs
+    again = _refill_limit(wanted, len(attrs))
+    if again <= wanted:
+        return attrs
+    try:
+        return _attributes_from(client.search(**dict(kwargs, limit=again)))
+    except Exception:
+        # A short page beats no page: the first answer still stands.
+        logger.exception("Indicator refill failed on server %s", sid)
+        return attrs
 
 
 def search_indicators(filters, server_ids=None, limit=None):
     """Run the attribute search across the selected MISP servers and merge.
 
     `server_ids` selects which configured servers to query (default: all
-    enabled). Rows from every server are merged and sorted by attribute
-    timestamp, newest first. Each row carries its originating server and a
-    server-specific event URL.
+    enabled). Each server contributes at most the query's limit, and a value on
+    more than one of them is reported once, by the first server in the list that
+    carries it: the same indicator twice with different context is not two
+    indicators. Rows carry the server they came from and a URL into it, and are
+    sorted by attribute timestamp, newest first.
 
     `limit` replaces the query's own limit. The exports pass MAX_SEARCH_LIMIT to
     fetch everything that matches, since the stored limit sizes the result table
@@ -2783,17 +2948,22 @@ def search_indicators(filters, server_ids=None, limit=None):
     kwargs = _indicator_search_kwargs(filters)
     if limit:
         kwargs["limit"] = limit
+    wanted = kwargs["limit"]
     clients = _indicator_feed_clients(server_ids)
-    rows, failed = [], 0
+    rows, failures, seen = [], [], set()
     for sid, label, url, client in clients:
         try:
-            raw = client.search(**kwargs)
-        except Exception:
+            attrs = _server_attributes(client, kwargs, wanted, sid)
+        except Exception as exc:
             logger.exception("Indicator search failed on server %s", sid)
-            failed += 1
+            failures.append(f"{label} {_server_failure(exc)}")
             continue
-        rows.extend(_parse_attribute_rows(raw, sid, label, url, filters))
-    reason = _no_answer_reason(clients, failed)
+        found = _parse_attribute_rows(attrs, sid, label, url, filters)[:wanted]
+        # Duplicates within one server stay: those are separate attributes on
+        # separate events, which the CSV is there to show.
+        rows.extend(r for r in found if r["value"] not in seen)
+        seen.update(r["value"] for r in found)
+    reason = _no_answer_reason(clients, failures)
     if reason:
         raise RuntimeError(reason)
     rows.sort(key=lambda r: r["_ts"], reverse=True)
@@ -2805,8 +2975,10 @@ def count_indicators(filters, server_ids=None, cap=100000):
 
     MISP cannot sort attribute search, so the result table only sorts the
     fetched page. This count tells the analyst how many match in total (so they
-    know whether the limit truncates the set). It counts attributes, not unique
-    values: the `text` export de-duplicates those, the table and CSV do not.
+    know whether the limit truncates the set). It counts attributes rather than
+    unique values, as the table and the CSV do, except across servers: a value
+    on two servers is one indicator to the feed and is counted once, by the
+    first server carrying it. The `text` export de-duplicates the rest.
 
     The tag filters are refined locally, exactly as the rows are, so the total
     matches what the table shows. That needs the attribute and event tags, so
@@ -2820,19 +2992,23 @@ def count_indicators(filters, server_ids=None, cap=100000):
     if not (filters.get("tags_include") or filters.get("tags_exclude")):
         kwargs.pop("include_context", None)
     clients = _indicator_feed_clients(server_ids)
-    total, capped, failed = 0, False, 0
-    for sid, _label, _url, client in clients:
+    total, capped, failures, seen = 0, False, [], set()
+    for sid, label, _url, client in clients:
         try:
             raw = client.search(**kwargs)
-        except Exception:
+        except Exception as exc:
             logger.exception("Indicator count failed on server %s", sid)
-            failed += 1
+            failures.append(f"{label} {_server_failure(exc)}")
             continue
         attrs = _attributes_from(raw)
         if len(attrs) >= cap:
             capped = True
-        total += len(_tag_filtered(attrs, filters))
-    reason = _no_answer_reason(clients, failed)
+        kept = _tag_filtered(attrs, filters)
+        # The table reports a value once, by the first server carrying it, so a
+        # total that counted it on every server would not be the same total.
+        total += sum(1 for a in kept if a.get("value") not in seen)
+        seen.update(a.get("value") for a in kept)
+    reason = _no_answer_reason(clients, failures)
     if reason:
         raise RuntimeError(reason)
     return total, capped
