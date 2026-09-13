@@ -802,11 +802,43 @@ def newsletter_new():
     return render_template("data_collection/newsletter_new.html", sources=sources)
 
 
+# The queue arrives newest first. These are what the column headers offer on
+# top of that; anything else leaves the order alone.
+_PENDING_SORT_KEYS = {
+    "title": lambda n: n["info"].lower(),
+    "date": lambda n: n["date"],
+}
+
+
 @bp.route("/newsletter/pending")
 def newsletter_pending():
     """List newsletters archived by the IMAP collector that await manual review."""
+    sort = (request.args.get("sort") or "").strip()
+    direction = (request.args.get("dir") or "asc").strip()
     pending = misp_store.list_pending_newsletters()
-    return render_template("data_collection/newsletter_pending.html", pending=pending)
+    key = _PENDING_SORT_KEYS.get(sort)
+    if key:
+        pending.sort(key=key, reverse=(direction == "desc"))
+    return render_template("data_collection/newsletter_pending.html",
+                           pending=pending, sort=sort, dir=direction)
+
+
+@bp.route("/newsletter/pending/<string:uuid>/ignore", methods=["POST"])
+def newsletter_ignore(uuid):
+    """Drop one newsletter from the review queue, collecting none of it."""
+    # From MISP rather than from the form: the queue is read again on the way
+    # back anyway, and an audit entry should not say whatever it was handed.
+    label = next((n["info"] for n in misp_store.list_pending_newsletters()
+                  if n["uuid"] == uuid), uuid)
+    try:
+        misp_store.ignore_newsletter(uuid)
+    except Exception as exc:
+        logger.exception("could not ignore newsletter %s", uuid)
+        flash(f"Could not ignore {label}: {exc}", "warning")
+    else:
+        audit.record("ignore", "newsletter-import", entity_id=uuid, entity_label=label)
+        flash(f"{label} is no longer waiting for review.", "info")
+    return redirect(url_for("data_collection.newsletter_pending"))
 
 
 @bp.route("/newsletter/pending/<string:uuid>", methods=["GET", "POST"])

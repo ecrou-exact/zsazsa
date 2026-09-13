@@ -94,6 +94,73 @@ def _pirs_markdown():
     return "\n".join(lines)
 
 
+def _taps_markdown():
+    taps = misp_store.list_threat_actor_profiles()
+    lines = [
+        "# Threat actor profiles",
+        f"Exported: {datetime.now(timezone.utc).strftime('%Y-%m-%d %H:%M UTC')}",
+        "",
+    ]
+    for tap in taps:
+        lines += [f"## {tap.tap_id} — {tap.title or '(untitled)'}", ""]
+        if tap.summary:
+            lines += [tap.summary, ""]
+        lines += [
+            f"**State:** {tap.status}",
+            f"**TLP:** {tap.tlp.upper()}",
+            f"**Published:** {_fmt_date(tap.published_at)}",
+            f"**Author:** {tap.author or '-'}",
+        ]
+        if tap.audience:
+            lines.append(f"**Audience:** {tap.audience}")
+        if tap.review_date:
+            lines.append(f"**Next review:** {_fmt_date(tap.review_date)}")
+
+        # The export cannot draw the Diamond Model the profile page shows, so the
+        # groups that feed it are named after its corners instead.
+        for heading, fields in (
+            ("Actor (Diamond: Adversary)",
+             (("Threat actors", ", ".join(tap.threat_actors)),
+              ("Actor types", ", ".join(tap.actor_types)),
+              ("Synonyms", tap.synonyms),
+              ("Suspected origin", tap.suspected_origin),
+              ("Motivation", tap.motivation),
+              ("Sponsorship", tap.sponsorship))),
+            ("Capability (Diamond: Capability)",
+             (("Capabilities", tap.capabilities),
+              ("Mode of operation", tap.mode_of_operation),
+              ("MITRE ATT&CK techniques", ", ".join(tap.mitre_attack_techniques)))),
+            ("Infrastructure (Diamond: Infrastructure)",
+             (("Infrastructure", tap.infrastructure),)),
+            ("Victim (Diamond: Victim)",
+             (("Geographic scope", ", ".join(tap.geographic_scope)),
+              ("Sectors", ", ".join(tap.sectors)),
+              ("Threat types", ", ".join(tap.threat_types)),
+              ("Time frame", tap.time_frame),
+              ("Technology", ", ".join(tap.technology)),
+              ("Vendor", ", ".join(tap.vendor)))),
+            ("Assessment",
+             (("Attribution rationale", tap.attribution_rationale),
+              ("Assessment confidence", tap.assessment_confidence),
+              ("Origin confidence", tap.origin_confidence),
+              ("Source reliability", tap.source_reliability),
+              ("Source credibility", tap.source_credibility))),
+            ("Recommendations",
+             (("Prevention", tap.rec_prevention),
+              ("Detection", tap.rec_detection),
+              ("Response", tap.rec_response))),
+        ):
+            written = [f"- {label}: {value}" for label, value in fields if value]
+            if written:
+                lines += ["", f"### {heading}", ""] + written
+
+        if tap.external_references:
+            lines += ["", "### References", ""]
+            lines += [f"- {ref}" for ref in tap.external_references]
+        lines += ["", f"**In MISP:** {tap.misp_url}", "", "---", ""]
+    return "\n".join(lines)
+
+
 def _girs_markdown():
     girs = misp_store.list_girs()
     stakeholders = misp_store.list_stakeholders()
@@ -249,6 +316,13 @@ def rfis():
     ts = datetime.now(timezone.utc).strftime("%Y%m%d")
     audit.record("export", "rfis", details=f"rfis-{ts}.md")
     return _dl(_rfis_markdown(), f"rfis-{ts}.md")
+
+
+@bp.route("/threat-actor-profiles")
+def threat_actor_profiles():
+    ts = datetime.now(timezone.utc).strftime("%Y%m%d")
+    audit.record("export", "threat-actor-profiles", details=f"threat-actor-profiles-{ts}.md")
+    return _dl(_taps_markdown(), f"threat-actor-profiles-{ts}.md")
 
 
 @bp.route("/stakeholders")

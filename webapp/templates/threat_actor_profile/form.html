@@ -8,6 +8,12 @@
 {% set src = form_values or tap %}
 {% set current_audiences = (src.audience or '').split(', ') if src and src.audience else [] %}
 
+{# The profile page draws a Diamond Model from four of these fields, and which
+   field lands in which corner is not guessable from the form. #}
+{% macro diamond(corner) %}<span class="text-muted fw-normal small ms-1"
+   title="Drawn in the {{ corner }} corner of the Diamond Model on the profile page."><i
+   class="fas fa-gem me-1"></i>Diamond: {{ corner }}</span>{% endmacro %}
+
 {% block title %}{{ 'Edit ' + tap.tap_id if is_edit else 'New threat actor profile' }} | zsazsa CTI{% endblock %}
 {% block page_title %}{{ 'Edit ' + tap.tap_id if is_edit else 'New threat actor profile' }}{% endblock %}
 
@@ -48,6 +54,7 @@
                 title="Draft the narrative fields from the galaxy data and the notes already on this form. Empty fields only.">
           <i class="fas fa-robot me-1"></i> Draft profile with AI
         </button>
+        <div id="tap-galaxy-links" class="form-text"></div>
         <div id="tap-enrich-status" class="form-text"></div>
       </div>
     </div>
@@ -106,7 +113,7 @@
           </div>
         </div>
         <div class="mb-3">
-          <label class="form-label">Capabilities</label>
+          <label class="form-label">Capabilities{{ diamond("Capability") }}</label>
           <textarea name="capabilities" class="form-control" rows="3"
             placeholder="Tooling, malware, techniques the actor is known to use.">{{ src.capabilities if src else '' }}</textarea>
         </div>
@@ -116,7 +123,7 @@
             placeholder="How the actor typically operates.">{{ src.mode_of_operation if src else '' }}</textarea>
         </div>
         <div>
-          <label class="form-label">Infrastructure</label>
+          <label class="form-label">Infrastructure{{ diamond("Infrastructure") }}</label>
           <textarea name="infrastructure" class="form-control" rows="3"
             placeholder="Hosting preferences, domain patterns, C2 characteristics.">{{ src.infrastructure if src else '' }}</textarea>
         </div>
@@ -175,6 +182,7 @@
           <div class="col-12">
             <label class="form-label">Geographic scope items
               <span class="text-muted fw-normal small">(from MISP Country &amp; Target Information galaxies)</span>
+              {{ diamond("Victim") }}
             </label>
             {{ galaxy_multiselect("geographic_scope", values=(src.geographic_scope if src else []), items=geo_items) }}
           </div>
@@ -182,6 +190,7 @@
           <div class="col-12">
             <label class="form-label">Sector scope items
               <span class="text-muted fw-normal small">(from MISP Sector galaxy)</span>
+              {{ diamond("Victim") }}
             </label>
             {{ galaxy_multiselect("sectors", values=(src.sectors if src else []), items=galaxy_sectors) }}
           </div>
@@ -189,6 +198,7 @@
           <div class="col-12">
             <label class="form-label">MITRE ATT&amp;CK techniques
               <span class="text-muted fw-normal small">(from MITRE ATT&amp;CK galaxy)</span>
+              {{ diamond("Capability") }}
             </label>
             {{ galaxy_multiselect("mitre_attack_techniques", values=(src.mitre_attack_techniques if src else []), items=galaxy_mitre_attack) }}
           </div>
@@ -260,7 +270,7 @@
       <div class="card-header"><i class="fas fa-user-secret me-2"></i>Profile</div>
       <div class="card-body">
         <div class="mb-3">
-          <label class="form-label required-label">Title</label>
+          <label class="form-label required-label">Title{{ diamond("Adversary") }}</label>
           <input name="title" class="form-control" required
             placeholder="Short, recognisable profile title." value="{{ src.title if src else '' }}">
         </div>
@@ -486,11 +496,53 @@ document.querySelectorAll('.actor-type-pill').forEach(function(pill) {
   function selectedActors() {
     return Array.from(document.querySelectorAll('input[name="threat_actors"]:checked')).map(function(c){ return c.value; });
   }
-  function refresh() { btn.style.display = selectedActors().length ? '' : 'none'; }
+  // misp-galaxy.org builds its anchors from the cluster value: lower case,
+  // spaces to hyphens, anything else dropped.
+  var links = document.getElementById('tap-galaxy-links');
+
+  function galaxyAnchor(value) {
+    return value.toLowerCase().replace(/[^a-z0-9 -]/g, '').trim().replace(/\s+/g, '-');
+  }
+
+  function showLinks() {
+    var actors = selectedActors();
+    links.textContent = '';
+    if (!actors.length) return;
+    links.appendChild(document.createTextNode('On misp-galaxy.org: '));
+    actors.forEach(function(actor, i) {
+      if (i) links.appendChild(document.createTextNode(', '));
+      var a = document.createElement('a');
+      a.href = 'https://misp-galaxy.org/threat-actor/#' + galaxyAnchor(actor);
+      a.target = '_blank';
+      a.rel = 'noopener';
+      a.textContent = actor;
+      links.appendChild(a);
+    });
+  }
+
+  function refresh() {
+    btn.style.display = selectedActors().length ? '' : 'none';
+    showLinks();
+  }
   document.addEventListener('change', function(e) {
     if (e.target && e.target.name === 'threat_actors') refresh();
   });
   refresh();
+
+  // The scope fields are galaxy pick-lists, so these arrive as items to tick
+  // rather than text to append. Ticking by hand skips the change event the
+  // selected-pills display listens for, so it is sent along.
+  function tickScope(field, items) {
+    var wanted = items || [];
+    var ticked = 0;
+    document.querySelectorAll('input[name="' + field + '"]').forEach(function(box) {
+      if (box.checked || wanted.indexOf(box.value) === -1) return;
+      box.checked = true;
+      box.dispatchEvent(new Event('change', {bubbles: true}));
+      ticked += 1;
+    });
+    return ticked;
+  }
 
   function appendText(el, text, sep) {
     if (!el || !text) return;
@@ -519,7 +571,20 @@ document.querySelectorAll('.actor-type-pill').forEach(function(pill) {
       appendText(document.querySelector('[name="sponsorship"]'), d.sponsorship, ', ');
       var refs = document.querySelector('[name="external_references"]');
       (d.refs || []).forEach(function(u) { appendText(refs, u, '\n'); });
-      status.textContent = 'Filled from MISP galaxy. Victimology is added as a note on save.';
+      var scope = tickScope('geographic_scope', d.geographic_scope)
+                + tickScope('sectors', d.sectors);
+      var message = 'Filled from MISP galaxy';
+      if (scope) {
+        message += ', including ' + scope + ' scope item(s) the actor is recorded as targeting';
+      }
+      message += '.';
+      // Victimology is prose rather than a field, so it is written as a note
+      // when the profile is saved. Only say so for actors that have any.
+      var withVictimology = d.victimology_actors || [];
+      if (withVictimology.length) {
+        message += ' Victimology for ' + withVictimology.join(', ') + ' is added as a note on save.';
+      }
+      status.textContent = message;
       btn.disabled = false;
     })
     .catch(function() { status.textContent = 'Could not fetch galaxy data.'; btn.disabled = false; });

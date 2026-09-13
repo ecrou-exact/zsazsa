@@ -439,7 +439,31 @@ def threat_actor_galaxy_meta(value: str) -> dict:
         "suspected_origin": agg.get("country") or agg.get("nationality") or [],
         "motivation": agg.get("motive") or agg.get("cfr-type-of-incident") or [],
         "sponsorship": agg.get("cfr-suspected-state-sponsor") or [],
+        # Who the actor is recorded as having gone after, which is the scope of
+        # a profile: countries and organisations in one, sectors in the other.
+        "victims": agg.get("cfr-suspected-victims") or [],
+        "target_categories": agg.get("cfr-target-category") or [],
     }
+
+
+def _match_scope_items(values, items):
+    """The scope items named by a set of galaxy values.
+
+    A value naming no item is dropped, since the scope fields only take what
+    their galaxy offers. CFR says "Government" where the sector galaxy says
+    "Government, Administration", so naming the part before the comma counts.
+    """
+    exact = {i.lower(): i for i in items}
+    head = {}
+    for item in items:
+        head.setdefault(item.split(",")[0].strip().lower(), item)
+    found = []
+    for value in values:
+        name = (value or "").strip().lower()
+        item = exact.get(name) or head.get(name)
+        if item and item not in found:
+            found.append(item)
+    return found
 
 
 _MITRE_CACHE_FILE = os.path.join(os.path.dirname(__file__), "..", "data", "mitre-attack-pattern.json")
@@ -2146,11 +2170,14 @@ def galaxy_enrichment(actors) -> dict:
     """Merge threat-actor galaxy context for one or more actors.
 
     Returns capabilities/mode_of_operation/synonyms as joined strings and refs as
-    a list, for the interactive "complete profile" button. victimology is returned
-    as (actor, text) pairs since it is recorded as a note rather than a field.
+    a list, for the interactive "complete profile" button. geographic_scope and
+    sectors come back as galaxy items to tick, from the actor's recorded victims
+    and target categories. victimology is returned as (actor, text) pairs since it
+    is recorded as a note rather than a field.
     """
     caps, modes, syns, refs, victimology = [], [], [], [], []
     origin, motivation, sponsorship = [], [], []
+    victims, categories = [], []
     seen_syn = set()
     for actor in actors:
         meta = threat_actor_galaxy_meta(actor)
@@ -2168,6 +2195,8 @@ def galaxy_enrichment(actors) -> dict:
         origin += [o for o in meta["suspected_origin"] if o]
         motivation += [m for m in meta["motivation"] if m]
         sponsorship += [s for s in meta["sponsorship"] if s]
+        victims += [v for v in meta["victims"] if v]
+        categories += [c for c in meta["target_categories"] if c]
         vic = "\n".join(meta["victimology"]).strip()
         if vic:
             victimology.append((actor, vic))
@@ -2182,6 +2211,10 @@ def galaxy_enrichment(actors) -> dict:
         "capabilities": "\n".join(caps),
         "mode_of_operation": "\n".join(modes),
         "synonyms": ", ".join(syns),
+        # The scope fields take galaxy values, so these come back as the items to
+        # tick rather than as text to append.
+        "geographic_scope": _match_scope_items(victims, galaxy_geography()),
+        "sectors": _match_scope_items(categories, galaxy_sectors()),
         "refs": refs,
         "suspected_origin": _uniq_join(origin),
         "motivation": _uniq_join(motivation),
@@ -4035,7 +4068,7 @@ def list_pending_newsletters() -> list[dict]:
         logger.exception("could not list pending newsletters")
         return []
     out = [
-        {"uuid": ev.uuid, "info": getattr(ev, "info", ""), "date": str(getattr(ev, "date", ""))}
+        {"uuid": ev.uuid, "info": getattr(ev, "info", "") or "", "date": str(getattr(ev, "date", ""))}
         for ev in events or []
     ]
     out.sort(key=lambda n: n["date"], reverse=True)
@@ -4078,6 +4111,16 @@ def mark_newsletter_pending(uuid: str) -> None:
     """Flag an already-archived newsletter for manual review (e.g. when the
     automatic scraper push found no listener)."""
     _tag_local(_misp(), uuid, NEWSLETTER_PENDING_TAG)
+
+
+def ignore_newsletter(uuid: str) -> None:
+    """Take a newsletter out of the review queue without collecting anything.
+
+    Only the tag goes, so the mail stays archived and is not collected again.
+    A refusal raises here, unlike finalize_newsletter, because nothing else has
+    happened and the entry would otherwise sit in the queue looking dealt with.
+    """
+    _check(_misp().untag(uuid, NEWSLETTER_PENDING_TAG), "untag newsletter")
 
 
 def finalize_newsletter(uuid: str, article_urls: list | None = None) -> None:

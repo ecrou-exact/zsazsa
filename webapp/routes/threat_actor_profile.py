@@ -116,6 +116,11 @@ def galaxy_enrich():
         "suspected_origin": data["suspected_origin"],
         "motivation": data["motivation"],
         "sponsorship": data["sponsorship"],
+        "geographic_scope": data["geographic_scope"],
+        "sectors": data["sectors"],
+        # The text itself is written server-side as a note when the profile is
+        # saved, so the page only needs to know which actors will produce one.
+        "victimology_actors": [actor for actor, _text in data["victimology"]],
     })
 
 

@@ -7,6 +7,7 @@ Stubs _misp and _tag_local so it runs offline.
 
 import unittest
 from types import SimpleNamespace
+from unittest import mock
 
 from webapp import misp_store
 
@@ -122,6 +123,32 @@ class GetNewsletterForReview(unittest.TestCase):
         item = self._run(fake)
         self.assertEqual(item["feed"], "ETDA CTI Robot")
         self.assertEqual(item["parser"], "ETDA CTI Robot")
+
+
+class IgnoreNewsletter(unittest.TestCase):
+    """Ignoring takes a newsletter out of the review queue and does no more."""
+
+    def setUp(self):
+        self.misp = mock.Mock()
+        patcher = mock.patch.object(misp_store, "_misp", return_value=self.misp)
+        patcher.start()
+        self.addCleanup(patcher.stop)
+
+    def test_only_the_pending_tag_is_removed(self):
+        # The event and its archived mail stay, or the collector would pick the
+        # same message up again on the next run.
+        self.misp.untag.return_value = {"message": "ok"}
+        misp_store.ignore_newsletter("u1")
+        self.misp.untag.assert_called_once_with("u1", misp_store.NEWSLETTER_PENDING_TAG)
+        self.misp.delete_event.assert_not_called()
+
+    def test_a_refused_untag_is_raised_rather_than_logged(self):
+        """finalize_newsletter can swallow this because the articles are already
+        out; here nothing has happened, and an entry that silently stays in the
+        queue is exactly what the analyst was trying to get rid of."""
+        self.misp.untag.return_value = {"errors": (403, {"message": "Tag is locked"})}
+        with self.assertRaises(RuntimeError):
+            misp_store.ignore_newsletter("u1")
 
 
 if __name__ == "__main__":
