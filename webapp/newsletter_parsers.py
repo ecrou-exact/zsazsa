@@ -2,11 +2,13 @@
 collected from a mailbox.
 
 Each parser turns a newsletter into a list of article dicts so the importer can
-show them for selection. The text may be a directly delivered edition or a
-forwarded copy (traditional or Apple Mail style), so the ETDA parser tolerates a
-forward preamble and '> ' quoting. Parsing is pure text work; nothing here
-touches MISP or the network. New newsletters are added by writing a parser and
-registering it in PARSERS.
+show them for selection. The same edition reaches a parser in several shapes: the
+mailing list's own plain text, a copy pasted out of a mail client, a forward
+(traditional or Apple Mail style), and the Markdown the collector produces when a
+message carries no plain-text part at all. They differ only in decoration, so the
+ETDA parser classifies every line before matching anything. Parsing is pure text
+work; nothing here touches MISP or the network. New newsletters are added by
+writing a parser and registering it in PARSERS.
 """
 
 import re
@@ -29,6 +31,18 @@ _FWD_HEADER_RE = re.compile(
 # Trailing in-mail anchor link on a "Quick overview" section name,
 # e.g. "Industrial Sector <x-msg://3/#ICS>".
 _OVERVIEW_ANCHOR_RE = re.compile(r'\s*<[^>]*>\s*$')
+
+# Markdown decoration, as it arrives when a message carried no plain-text part and
+# the collector converted its HTML instead: headings, bullets, table rows, emphasis
+# around a field label, and backslash-escaped punctuation.
+_ATX_RE = re.compile(r'^(#{1,6})\s+(.*?)\s*#*$')
+_RULE_RE = re.compile(r'^(=+|-+)$')
+_BULLET_RE = re.compile(r'^[*+-]\s+(?!\s*[*+-])(.+)$')
+_TABLE_ROW_RE = re.compile(r'^\|.*\|$')
+_EMPHASIS_RE = re.compile(r'^([*_]{1,2})(.+?)\1$')
+_MD_ESCAPE_RE = re.compile(r'\\([\\`*_{}\[\]()#+.!-])')
+# Back-to-top arrow: bare in the list mail, a link in converted HTML.
+_ARROW_RE = re.compile(r'^(↑|\[↑\].*)$')
 
 
 def _parsed_tlp(match: re.Match | None) -> str:
@@ -65,6 +79,18 @@ def _strip_quotes(text: str) -> str:
     return text.strip().strip('"').strip('“”').strip()
 
 
+def _strip_emphasis(line: str) -> str:
+    """The line without its Markdown emphasis, e.g. '*Priority: 1 - Critical*'."""
+    stripped = line.strip()
+    match = _EMPHASIS_RE.match(stripped)
+    return match.group(2).strip() if match else stripped
+
+
+def _clean_title(text: str) -> str:
+    """Undo Markdown escaping and collapse the whitespace a converter leaves behind."""
+    return " ".join(_MD_ESCAPE_RE.sub(r"\1", text).split())
+
+
 def _etda_section_names(lines: list[str]) -> list[str]:
     """Section names in order, read from the 'Quick overview' table."""
     names = []
@@ -82,93 +108,152 @@ def _etda_section_names(lines: list[str]) -> list[str]:
     return names
 
 
-def _etda_body_start(lines: list[str]) -> int:
-    """Index of the first line after the 'Quick overview' table."""
-    seen_row = False
-    for idx, line in enumerate(lines):
-        if _OVERVIEW_ROW_RE.match(line.strip()):
-            seen_row = True
-        elif seen_row:
-            return idx
-    return 0
+def _opens_section(lines: list[str], idx: int) -> bool:
+    """Whether the line at idx is a section heading in the mailing list's layout.
+
+    Nothing marks it up there: it sits alone between blank lines with the first
+    '* ' title of its section below it. A URL or a Priority line can sit in the
+    same place, so they are ruled out.
+    """
+    line = lines[idx].strip()
+    prev = lines[idx - 1].strip() if idx else ""
+    nxt = lines[idx + 1].strip() if idx + 1 < len(lines) else ""
+    after = lines[idx + 2].strip() if idx + 2 < len(lines) else ""
+    if prev or nxt or not _BULLET_RE.match(after):
+        return False
+    return not (_URL_RE.search(line) or _PRIORITY_RE.match(line)
+                or _RELEVANCE_RE.match(line))
+
+
+def _etda_kinds(lines: list[str]) -> list[tuple[str, str]]:
+    """Classify every line as section, title, arrow, skip or text.
+
+    A title and a section are marked up differently in each shape an edition
+    arrives in: '* Title' under a bare section line in the list mail, '### Title'
+    under a setext heading in converted HTML, and neither in a pasted copy, where
+    the 'Quick overview' table names the sections instead.
+    """
+    kinds = []
+    for idx, raw in enumerate(lines):
+        line = _strip_emphasis(raw)
+        nxt = lines[idx + 1].strip() if idx + 1 < len(lines) else ""
+        atx = _ATX_RE.match(line)
+        bullet = _BULLET_RE.match(line)
+        if not line or _RULE_RE.match(line) or _TABLE_ROW_RE.match(line):
+            kinds.append(("skip", ""))
+        elif _ARROW_RE.match(line):
+            kinds.append(("arrow", ""))
+        elif _RULE_RE.match(nxt) and len(nxt) == len(line):
+            # A converter underlines a heading to the width of its text. The rule
+            # under the report title in the list mail is wider than the title.
+            kinds.append(("title" if nxt[0] == "=" else "section", line))
+        elif atx:
+            kinds.append(("section" if len(atx.group(1)) <= 2 else "title", atx.group(2)))
+        elif bullet:
+            kinds.append(("title", bullet.group(1).strip()))
+        elif _opens_section(lines, idx):
+            kinds.append(("section", line))
+        else:
+            kinds.append(("text", line))
+    return kinds
+
+
+def _etda_report_title(kinds: list[tuple[str, str]]) -> str:
+    """The edition's own title line, ignoring any forward header above it."""
+    for _, line in kinds[:25]:
+        if _FWD_HEADER_RE.match(line):
+            continue
+        if "cyber threat intelligence" in line.lower():
+            return line
+    return ""
+
+
+def _etda_article(pending: list[tuple[str, str]], priority: re.Match, section: str,
+                  relevance: str, urls: list) -> dict:
+    """One article, from the lines above its Priority line and the ones below it.
+
+    The title is the last of those lines classified as one, so a section heading
+    or an excerpt above it cannot take its place. A pasted copy marks up no title
+    at all, and there the first line is the title and the rest the intro.
+    """
+    marked = [n for n, (kind, _) in enumerate(pending) if kind == "title"]
+    idx = marked[-1] if marked else 0
+    title = pending[idx][1] if pending else ""
+    intro = " ".join(text for n, (_, text) in enumerate(pending) if n != idx)
+    rank = int(priority.group(1))
+    return {
+        "section": section,
+        "title": _clean_title(title),
+        "intro": _strip_quotes(intro),
+        "priority_rank": rank,
+        "priority_label": priority.group(2).strip(),
+        "priority_key": _PRIORITY_KEYS.get(rank, "important"),
+        "relevance": relevance,
+        "primary_url": urls[0] if urls else "",
+        "related_urls": urls[1:],
+    }
+
+
+def _etda_details(kinds: list[tuple[str, str]], i: int) -> tuple[str, list, int]:
+    """Relevance and URLs following a Priority line, and the index to resume at."""
+    relevance = ""
+    urls = []
+    while i < len(kinds):
+        kind, line = kinds[i]
+        match = _RELEVANCE_RE.match(line)
+        if match:
+            relevance = match.group(1).strip()
+        elif _URL_RE.search(line):
+            urls.extend(_clean_url(u) for u in _URL_RE.findall(line))
+        elif kind != "skip":
+            break  # the next title, section header or arrow
+        i += 1
+    return relevance, urls, i
 
 
 def parse_etda(text: str) -> dict:
-    """Parse an ETDA CTI Robot newsletter into report metadata and articles."""
+    """Parse an ETDA CTI Robot newsletter into report metadata and articles.
+
+    An article starts at its 'Priority: N - Label' line, which every edition has
+    for every article, whatever shape it arrived in.
+    """
     text = _dequote(text.replace("\r\n", "\n").replace("\r", "\n"))
     lines = text.split("\n")
-
-    sections = set(_etda_section_names(lines))
-    tlp_match = _TLP_RE.search(text)
-    tlp = _parsed_tlp(tlp_match)
-
-    report_title = ""
-    for line in lines[:20]:
-        if _FWD_HEADER_RE.match(line.strip()):
-            continue
-        if "cyber threat intelligence" in line.lower():
-            report_title = line.strip()
-            break
+    kinds = _etda_kinds(lines)
+    overview = set(_etda_section_names(lines))
+    report_title = _etda_report_title(kinds)
 
     articles = []
-    current_section = ""
-    pending = []  # lines gathered before a Priority line: [title, intro lines...]
-
-    body = lines[_etda_body_start(lines):]
+    section = ""
+    pending = []  # (kind, text) gathered since the last article or section
     i = 0
-    while i < len(body):
-        line = body[i].strip()
+    while i < len(kinds):
+        kind, line = kinds[i]
         i += 1
-        if not line or line == "↑":  # blank or back-to-top arrow
-            if line == "↑":
-                pending = []
+        if kind == "skip":
             continue
-        if line in sections:
-            current_section = line
+        if kind == "arrow" or line == report_title:
+            pending = []
+            continue
+        if kind == "section" or line in overview:
+            section = line
             pending = []
             continue
 
         priority = _PRIORITY_RE.match(line)
         if not priority:
-            pending.append(line)
+            pending.append((kind, line))
             continue
 
-        title = pending[0] if pending else ""
-        intro = _strip_quotes(" ".join(pending[1:])) if len(pending) > 1 else ""
+        relevance, urls, i = _etda_details(kinds, i)
+        article = _etda_article(pending, priority, section, relevance, urls)
         pending = []
+        if article["title"]:
+            articles.append(article)
 
-        relevance = ""
-        urls = []
-        while i < len(body):
-            nxt = body[i].strip()
-            rel = _RELEVANCE_RE.match(nxt)
-            if rel:
-                relevance = rel.group(1).strip()
-                i += 1
-            elif _URL_RE.search(nxt):
-                urls.extend(_clean_url(u) for u in _URL_RE.findall(nxt))
-                i += 1
-            elif not nxt:
-                i += 1
-            else:
-                break  # next title, section header or arrow
-
-        if not title:
-            continue
-        rank = int(priority.group(1))
-        articles.append({
-            "section": current_section,
-            "title": title,
-            "intro": intro,
-            "priority_rank": rank,
-            "priority_label": priority.group(2).strip(),
-            "priority_key": _PRIORITY_KEYS.get(rank, "important"),
-            "relevance": relevance,
-            "primary_url": urls[0] if urls else "",
-            "related_urls": urls[1:],
-        })
-
-    return {"report_title": report_title, "tlp": tlp, "articles": articles}
+    return {"report_title": _clean_title(report_title),
+            "tlp": _parsed_tlp(_TLP_RE.search(text)),
+            "articles": articles}
 
 
 # IT-ISAC lays each article out as labelled fields, separated by a rule. The

@@ -113,6 +113,11 @@ def extract_body(msg: Message) -> str:
     return _strip_forward_preamble(_body_text(msg))
 
 
+def subject(msg: Message) -> str:
+    """The message's Subject header, decoded."""
+    return _decode_header(msg.get("Subject", ""))
+
+
 def _candidate_senders(msg: Message) -> list[str]:
     """Sender strings to match against: the From header plus any From: line in the
     forwarded body (the original sender is there once a mail has been forwarded)."""
@@ -179,7 +184,10 @@ def fetch_unprocessed(mailbox: dict):
     try:
         conn.select(mailbox.get("folder") or "INBOX")
         for uid in _search_unprocessed(conn):
-            typ, data = conn.uid("fetch", uid, "(RFC822)")
+            # PEEK, not RFC822: a plain fetch marks every message it reads as
+            # seen, including mail for no source at all, and the UNSEEN fallback
+            # above would then never offer it again.
+            typ, data = conn.uid("fetch", uid, "(BODY.PEEK[])")
             if typ != "OK" or not data or not data[0]:
                 continue
             yield conn, uid, email.message_from_bytes(data[0][1])
@@ -191,9 +199,25 @@ def fetch_unprocessed(mailbox: dict):
             pass
 
 
-def mark_processed(conn: imaplib.IMAP4, uid: bytes) -> None:
-    """Flag a message as ingested: processed keyword, plus Seen and Flagged."""
-    conn.uid("store", uid, "+FLAGS", f"({PROCESSED_KEYWORD} \\Seen \\Flagged)")
+def mark_processed(conn: imaplib.IMAP4, uid: bytes) -> bool:
+    """Flag a message as ingested: processed keyword, plus Seen and Flagged.
+
+    Returns False when the keyword did not stick, which leaves the message to be
+    collected again on the next run.
+    """
+    try:
+        typ, data = conn.uid("store", uid, "+FLAGS", f"({PROCESSED_KEYWORD} \\Seen \\Flagged)")
+    except imaplib.IMAP4.error as exc:
+        logger.warning("marking message %s processed failed: %s", uid, exc)
+        return False
+    # A server echoes the flags it stored, though not every one does, so only an
+    # answer that comes back without the keyword counts as a refusal.
+    echoed = b" ".join(part for part in (data or []) if isinstance(part, bytes))
+    if typ != "OK" or (echoed and PROCESSED_KEYWORD.encode() not in echoed):
+        logger.warning("server did not keep %s on message %s: %s",
+                       PROCESSED_KEYWORD, uid, echoed or typ)
+        return False
+    return True
 
 
 def test_connection(host: str, port, ssl: bool, username: str, password: str,

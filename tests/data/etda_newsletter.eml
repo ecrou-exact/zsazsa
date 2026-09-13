@@ -1,0 +1,225 @@
+Subject: [1st-news] [FIRST] ETDA Cyber Threat Intelligence 1 January 2026
+From: "CTI robot (via first-news Mailing List)" <first-news@lists.first.org>
+To: subscriber@example.org
+Date: Thu, 01 Jan 2026 02:07:11 +0000
+MIME-Version: 1.0
+Content-Type: multipart/alternative;
+ boundary="===============3786061335852737472=="
+
+--===============3786061335852737472==
+Content-Type: text/plain; charset="utf-8"
+Content-Transfer-Encoding: quoted-printable
+
+[FIRST] ETDA Cyber Threat Intelligence of 1 January 2026
+------------------------------------------------------------------------
+
+Healthcare Sector
+
+* Sample Imaging Gateway Advisory
+
+"Successful exploitation of these sample vulnerabilities could allow an attac=
+ker to read stored images or cause a denial-of-service condition."
+Priority: 3 - Important
+Relevance: General
+
+<https://example.org/advisories/imaging-gateway>
+<https://example.com/news/imaging-gateway-flaws>
+
+Vulnerabilities
+
+* Example Router Firmware Authentication Bypass
+
+"An unauthenticated request reaches the administrative interface of the sampl=
+e firmware and changes its credentials."
+Priority: 1 - Critical
+Relevance: General
+
+<https://example.org/advisories/router-bypass>
+
+* Example_Toolkit Path Traversal
+
+"A crafted archive written by the sample toolkit escapes the extraction direc=
+tory."
+Priority: 3 - Important
+Relevance: General, Trends and statistics
+
+<https://example.org/advisories/toolkit-traversal>
+
+Malware
+
+* #SampleRansomware: Example Crew
+
+"The sample crew encrypts file servers after stealing credentials from backup=
+ hosts."
+Priority: 2 - Urgent
+Relevance: General
+
+<https://example.org/reports/sample-ransomware>
+
+* Sample Loader Spread Through Invoice Phishing
+
+"Invoice-themed mail drops the sample loader, which pulls its next stage from=
+ a public paste site."
+Priority: 3 - Important
+Relevance: General
+
+<https://example.org/reports/sample-loader>
+
+General News
+
+* Sample Annual Threat Report
+
+"The sample report counts incidents by sector and puts phishing first for the=
+ third year running."
+Priority: 3 - Important
+Relevance: General
+
+<https://example.org/reports/annual>
+
+TLP: GREEN
+------------------------------------------------------------------------
+
+Cyber Threat Intelligence Department
+Electronic Transactions Development Agency
+
+Follow us on
+Facebook: <https://example.org/etda>
+
+--===============3786061335852737472==
+Content-Type: text/html; charset="utf-8"
+Content-Transfer-Encoding: quoted-printable
+MIME-Version: 1.0
+
+<html>
+<head><title>[FIRST] ETDA Cyber Threat Intelligence 1 January 2026</title></h=
+ead>
+<body class=3D"mbody">
+<div class=3D"logos">
+<table border=3D"0"><tr><td><a href=3D"https://example.org/etda"><img src=3D"=
+cid:logo-etda.png" height=3D"50" alt=3D"ETDA" /></a></td>
+<td><font size=3D"3">Electronic Transactions Development Agency</font></td></=
+tr></table>
+</div>
+<div class=3D"graph">
+<div class=3D"innermain">
+<h1>[FIRST] ETDA Cyber Threat Intelligence 1 January 2026</h1>
+<a name=3D"top"></a>
+<div class=3D"innermain"><strong>Quick overview:</strong><br />
+<table cellspacing=3D"0" cellpadding=3D"0">
+<tr><td></td><td><font color=3D"red">Critical</font></td><td><font color=3D"o=
+range">Urgent</font></td><td><font color=3D"darkgreen">Important</font></td><=
+/tr>
+<tr><td><a href=3D"#HEAL" class=3D"neutrallink">Healthcare Sector</a></td><td=
+ align=3D"right"><font color=3D"red">0</font></td><td align=3D"right"><font c=
+olor=3D"orange">0</font></td><td align=3D"right"><font color=3D"darkgreen">1<=
+/font></td></tr>
+<tr><td><a href=3D"#VULN" class=3D"neutrallink">Vulnerabilities</a></td><td a=
+lign=3D"right"><font color=3D"red">1</font></td><td align=3D"right"><font col=
+or=3D"orange">0</font></td><td align=3D"right"><font color=3D"darkgreen">1</f=
+ont></td></tr>
+<tr><td><a href=3D"#MALW" class=3D"neutrallink">Malware</a></td><td align=3D"=
+right"><font color=3D"red">0</font></td><td align=3D"right"><font color=3D"or=
+ange">1</font></td><td align=3D"right"><font color=3D"darkgreen">1</font></td=
+></tr>
+<tr><td><a href=3D"#GEN" class=3D"neutrallink">General News</a></td><td align=
+=3D"right"><font color=3D"red">0</font></td><td align=3D"right"><font color=
+=3D"orange">0</font></td><td align=3D"right"><font color=3D"darkgreen">1</fon=
+t></td></tr>
+</table>
+</div>
+<a name=3D"HEAL"></a><h2>Healthcare Sector</h2>
+<h3>Sample Imaging Gateway Advisory</h3>
+<div class=3D"justbreak">
+<p>"Successful exploitation of these sample vulnerabilities could allow an at=
+tacker to read stored images or cause a denial-of-service condition."<br />
+<em>Priority: <font color=3D"darkgreen">3 - Important</font></em>
+<br />
+<em>Relevance: General</em>
+</p>
+<div class=3D"ovf">
+&lt;<a href=3D"https://example.org/advisories/imaging-gateway" class=3D"exlin=
+k">https://example.org/advisories/imaging-gateway</a>&gt;<br />
+&lt;<a href=3D"https://example.com/news/imaging-gateway-flaws" class=3D"exlin=
+k">https://example.com/news/imaging-gateway-flaws</a>&gt;
+</div></div>
+<div class=3D"uarr"><a href=3D"#top" class=3D"neutrallink" title=3D"Back to t=
+he top">&uarr;</a></div>
+<a name=3D"VULN"></a><h2>Vulnerabilities</h2>
+<h3>Example Router Firmware Authentication Bypass</h3>
+<div class=3D"justbreak">
+<p>"An unauthenticated request reaches the administrative interface of the sa=
+mple firmware and changes its credentials."<br />
+<em>Priority: <font color=3D"red">1 - Critical</font></em>
+<br />
+<em>Relevance: General</em>
+</p>
+<div class=3D"ovf">
+&lt;<a href=3D"https://example.org/advisories/router-bypass" class=3D"exlink"=
+>https://example.org/advisories/router-bypass</a>&gt;
+</div></div>
+<h3>Example_Toolkit Path Traversal</h3>
+<div class=3D"justbreak">
+<p>"A crafted archive written by the sample toolkit escapes the extraction di=
+rectory."<br />
+<em>Priority: <font color=3D"darkgreen">3 - Important</font></em>
+<br />
+<em>Relevance: General, Trends and statistics</em>
+</p>
+<div class=3D"ovf">
+&lt;<a href=3D"https://example.org/advisories/toolkit-traversal" class=3D"exl=
+ink">https://example.org/advisories/toolkit-traversal</a>&gt;
+</div></div>
+<div class=3D"uarr"><a href=3D"#top" class=3D"neutrallink" title=3D"Back to t=
+he top">&uarr;</a></div>
+<a name=3D"MALW"></a><h2>Malware</h2>
+<h3>#SampleRansomware: Example Crew</h3>
+<div class=3D"justbreak">
+<p>"The sample crew encrypts file servers after stealing credentials from bac=
+kup hosts."<br />
+<em>Priority: <font color=3D"orange">2 - Urgent</font></em>
+<br />
+<em>Relevance: General</em>
+</p>
+<div class=3D"ovf">
+&lt;<a href=3D"https://example.org/reports/sample-ransomware" class=3D"exlink=
+">https://example.org/reports/sample-ransomware</a>&gt;
+</div></div>
+<h3>Sample Loader Spread Through Invoice Phishing</h3>
+<div class=3D"justbreak">
+<p>"Invoice-themed mail drops the sample loader, which pulls its next stage f=
+rom a public paste site."<br />
+<em>Priority: <font color=3D"darkgreen">3 - Important</font></em>
+<br />
+<em>Relevance: General</em>
+</p>
+<div class=3D"ovf">
+&lt;<a href=3D"https://example.org/reports/sample-loader" class=3D"exlink">ht=
+tps://example.org/reports/sample-loader</a>&gt;
+</div></div>
+<div class=3D"uarr"><a href=3D"#top" class=3D"neutrallink" title=3D"Back to t=
+he top">&uarr;</a></div>
+<a name=3D"GEN"></a><h2>General News</h2>
+<h3>Sample Annual Threat Report</h3>
+<div class=3D"justbreak">
+<p>"The sample report counts incidents by sector and puts phishing first for =
+the third year running."<br />
+<em>Priority: <font color=3D"darkgreen">3 - Important</font></em>
+<br />
+<em>Relevance: General</em>
+</p>
+<div class=3D"ovf">
+&lt;<a href=3D"https://example.org/reports/annual" class=3D"exlink">https://e=
+xample.org/reports/annual</a>&gt;
+</div></div>
+<div class=3D"uarr"><a href=3D"#top" class=3D"neutrallink" title=3D"Back to t=
+he top">&uarr;</a></div>
+<p>TLP: GREEN</p>
+</div>
+<div class=3D"footer"><h3>Follow us on</h3>
+<a href=3D"https://example.org/etda"><img src=3D"cid:icon.png" alt=3D"Social"=
+ /></a>
+</div>
+</body>
+</html>
+
+--===============3786061335852737472==--

@@ -84,6 +84,44 @@ class CreateNewsletterEvent(unittest.TestCase):
         self.assertEqual(self.fake.reports, [])
         self.assertEqual(self.fake.attributes, [])
 
+    def test_a_newsletter_with_no_articles_is_flagged(self):
+        # The review page is otherwise an empty form, which reads as a broken
+        # page rather than as a mail the parser could make nothing of.
+        misp_store.create_newsletter_event(
+            "ETDA", "body", status="pending-review", parsed_articles=0,
+        )
+        self.assertIn(misp_store.NEWSLETTER_EMPTY_TAG, self.tags)
+
+    def test_a_newsletter_with_articles_is_not_flagged(self):
+        misp_store.create_newsletter_event(
+            "ETDA", "body", status="pending-review", parsed_articles=4,
+        )
+        self.assertNotIn(misp_store.NEWSLETTER_EMPTY_TAG, self.tags)
+
+    def test_an_unstated_count_is_not_flagged(self):
+        # The paste flow only archives what an analyst has already selected.
+        misp_store.create_newsletter_event("ETDA", "body")
+        self.assertNotIn(misp_store.NEWSLETTER_EMPTY_TAG, self.tags)
+
+
+class ListPendingNewsletters(unittest.TestCase):
+    def _queue(self, *tag_sets):
+        events = [SimpleNamespace(uuid=f"u{i}", info=f"Mail {i}", date="2026-01-0%d" % (i + 1),
+                                  tags=[SimpleNamespace(name=n) for n in tags])
+                  for i, tags in enumerate(tag_sets)]
+        with mock.patch.object(misp_store, "_misp"), \
+             mock.patch.object(misp_store, "_search_all", return_value=events):
+            return misp_store.list_pending_newsletters()
+
+    def test_says_which_ones_the_parser_found_nothing_in(self):
+        pending = self._queue([misp_store.NEWSLETTER_PENDING_TAG],
+                              [misp_store.NEWSLETTER_PENDING_TAG, misp_store.NEWSLETTER_EMPTY_TAG])
+        self.assertEqual([n["empty"] for n in sorted(pending, key=lambda n: n["uuid"])],
+                         [False, True])
+
+    def test_an_untagged_event_is_not_empty(self):
+        self.assertEqual(self._queue([])[0]["empty"], False)
+
 
 class ReviewFakeMisp:
     def __init__(self, tag_names, report_name, content="raw"):

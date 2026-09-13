@@ -1,0 +1,778 @@
+Subject: [1st-news] [IT-ISAC] Open Source News September 11, 2026
+From: "Dylan Roth (via first-news Mailing List)" <first-news@lists.first.org>
+To: subscriber@example.org
+Date: Fri, 11 Sep 2026 15:57:31 +0000
+MIME-Version: 1.0
+Content-Type: multipart/alternative;
+ boundary="===============5451736755466115481=="
+
+--===============5451736755466115481==
+Content-Type: text/plain; charset="utf-8"
+Content-Transfer-Encoding: quoted-printable
+
+TLP:CLEAR
+
+[IT-ISAC] Open Source News September 11, 2026
+
+
+Title: DarkTortilla Malware: How It Works and How to Test Your Defenses
+
+
+
+Date Published: September 11, 2026
+
+
+
+https://www.picussecurity.com/resource/blog/darktortilla-malware-how-it-works=
+-and-how-to-test-your-defenses
+
+
+Excerpt: =E2=80=9CDarkTortilla is a highly configurable .NET-based crypter and
+multi-stage loader active since at least August 2015. It targets Windows
+systems, spreading through logistics-themed phishing emails. Unlike typical
+loaders, DarkTortilla hides its encrypted configuration inside bitmap pixel
+data and can pull its core processor DLL from public paste sites. It runs
+payloads only inside injected legitimate processes, applies three
+interchangeable persistence mechanisms, and pairs a WatchDog executable
+with the loader so each restarts the other. In this blog, we will explain
+how DarkTortilla works, from delivery to payload injection, and show how
+Picus helps you validate your security controls against this malware.=E2=80=9D
+
+------------------------------
+
+
+
+Title: GuardBreaker: Derailing AI-Assisted Malware Analysis With a Code
+Comment
+
+
+
+Date Published: September 10, 2026
+
+
+https://www.welivesecurity.com/en/business-security/guardbreaker-derailing-ai=
+-assisted-malware-analysis-code-comment/
+
+
+Excerpt: =E2=80=9CMalware developers have long adapted their code and tactics=
+ to
+the defenses and scrutiny that are likely to stand in their way. Using
+various evasion and anti-analysis methods, they routinely attempt to hinder
+code analysis or prevent their malware from revealing its true behavior
+while under inspection. Other tools =E2=80=93 notably, EDR killers, documented
+extensively by ESET researchers =E2=80=93 go straight after security solutions
+themselves. As LLM-based tools increasingly assist with various security
+tasks, including code triage and analysis, it was only a matter of time
+before threat actors began to look for practical ways to subvert them, too.
+Alongside conventional evasion techniques, some are taking a different
+tack: the adversarial input that=E2=80=99s intended to frustrate analysis is =
+left
+in plain sight.=E2=80=9D
+
+
+------------------------------
+
+
+
+Title: Trezor Says 347,000 Users Received Phishing Emails After Brevo Hack
+
+
+
+Date Published: September 11, 2026
+
+
+https://www.securityweek.com/trezor-says-347000-users-received-phishing-email=
+s-after-brevo-hack/
+
+
+Excerpt: =E2=80=9CCold cryptocurrency storage provider Trezor says roughly 34=
+7,000
+of its customers received phishing emails after a third-party marketing
+platform used by the company was hacked. The incident involved the
+marketing platform Brevo, which Trezor uses for newsletters. Brevo said an
+attacker exploited how it handles SAML Single Sign-On (SSO) to access 138
+accounts. =E2=80=9CThe attacker created a Brevo account and enabled single si=
+gn-on
+(SSO) on it, then invited legitimate Brevo users into that SSO
+configuration. Using their own identity provider, they were able to sign in
+as those invited users, which by itself is expected behavior for SSO,=E2=80=9D
+Brevo explained. Swiss Bitcoin hardware wallet maker BitBox and crypto tax
+calculator CoinTracking also appear to have been hit by the Brevo hack, but
+they haven=E2=80=99t shared details on the impact and have not named Brevo as=
+ the
+source of the incident.=E2=80=9D
+
+
+------------------------------
+
+
+
+Title: Security Update: September 2026 Incident Report
+
+
+
+Date Published: September 9, 2026
+
+
+https://surfshark.com/blog/security-update-september-2026-incident-report
+
+
+Excerpt: =E2=80=9COn the 2nd of September we confirmed an unusual activity wi=
+thin
+one of our internal test servers and immediately began our response. After
+identifying that the server has been accessed by an unauthorized party, we
+contained the incident on the same day. Further remediation was done by 5th
+September. Based on our investigation, we have confirmed that no user data
+and VPN services were affected. No, it does not affect our customers and no
+user action is required. The system involved was an internal engineering
+environment. By design, it does not store or process any user data, and it
+is kept separate from the production systems that deliver our service.
+Personal information was never held and accessible from here, VPN traffic
+and browsing activity are not logged or retained in the first place and the
+apps and browser extensions on your devices were not altered in any way.
+Due to a human error, an internal test server, used by our engineering
+teams was misconfigured in a way that made it reachable from the internet.
+Through that server, limited internal engineering material stored in one of
+our environments was accessed by an unauthorized third party.=E2=80=9D
+
+
+------------------------------
+
+
+
+Title: Detecting and Countering Misuse of AI: September 2026
+
+
+
+Date Published: September 10, 2026
+
+
+https://www.anthropic.com/threat-intelligence-report-september-2026
+
+
+Excerpt: =E2=80=9COver the past eight months, our Threat Intelligence team
+identified and disrupted operations in which threat actors tried to use
+Claude for malicious activity. In this report, we share case studies from
+those operations and describe how malicious use of Claude has evolved since
+our previous threat reports in March, August, and November 2025. In each
+case, we disrupted the activity, used what we learned to strengthen our
+safeguards, and shared intelligence with authorities and industry partners,
+where appropriate. This report covers activity we disrupted between
+December 2025 and August 2026 across seven harm areas: cyber operations,
+influence operations, surveillance, scams and fraud, biological misuse,
+conventional weapons development, and distillation. Claude Haiku, Sonnet,
+and Opus models were used. None of the misuse cases involved the use of
+Claude Fable or Mythos-class models, with the exception of one illicit
+distillation case.=E2=80=9D
+
+------------------------------
+
+
+
+Title: Measuring Tactical Intelligence Targeting and Conventional Weapons
+Capabilities of AI Models
+
+
+Date Published: September 10, 2026
+
+
+https://www.anthropic.com/research/intelligence-targeting-conventional-weapon=
+s-capabilities
+
+
+
+Excerpt: =E2=80=9CCybersecurity and biorisk are among the best-studied domain=
+s of
+risk from misuse of AI. But most of modern conflict occurs in more
+conventional realms. Adversaries try to identify and target one another to
+collect intelligence. Combatants try to make conventional weapons more
+precise and less vulnerable to countermeasures. =E2=80=9CKill chains,=E2=80=
+=9D such as
+=E2=80=9Cfind, fix, track, target, engage, assess,=E2=80=9D are end-to-end co=
+nceptual
+models of these engagements. Making improvements in any step of this
+process has typically required expert human labor and judgment: experienced
+intelligence analysts or highly-trained engineers, for example. As AI shows
+tremendous progress in data analysis, software development, and coding, can
+it apply these skills to the specialized domains associated with national
+security? The Frontier Red Team has developed some complementary capability
+evaluations to better illustrate how AI progress is changing the risk
+landscape across different parts of the kill chain. The evaluations show
+that models are making consistent progress on simulated intelligence and
+weapons development tasks. Open-weights models we tested on the same
+evaluations are behind the frontier (typically between Sonnet and
+Mythos-class models in performance), but often still show concerning levels
+of capability. Models well short of the frontier will have intelligence and
+military applications.=E2=80=9D
+
+
+------------------------------
+
+
+
+Title: Gray Rabbits and the Tale of a One-Click Backdoor
+
+
+
+Date Published: September 10, 2026
+
+
+
+https://www.gendigital.com/blog/insights/research/one-click-backdoor-sogou
+
+
+Excerpt: =E2=80=9CGen Threat Labs discovered a critical remote code execution
+vulnerability (CVE-2026-51990) in Sogou Input Method, one of the most
+widely used Chinese-language input method editors with hundreds of millions
+of installations. The vulnerability chains three separate weaknesses into a
+single, one-click exploit: unvalidated command-line argument injection in
+the sgbiz: custom protocol handler, unrestricted URL navigation in a
+CEF-based webview, and a severely outdated, unsandboxed Chromium browser
+engine. We observed this vulnerability actively exploited in the wild by
+the UNC3569 threat group to deploy the GRAYRABBIT backdoor through a
+crafted link.=E2=80=9D
+
+
+------------------------------
+
+
+
+
+Title: Artifactory Under Attack: In-the-Wild Exploitation of
+CVE-2026-42016, CVE-2026-42018 & CVE-2026-82329
+
+
+Date Published: September 10, 2026
+
+
+
+https://www.wiz.io/blog/artifactory-under-attack-in-the-wild-exploitation-of-=
+cve-2026-42016-cve-2026-4201
+
+
+Excerpt: =E2=80=9CWiz Research has identified active, in-the-wild exploitatio=
+n of
+three critical and high-severity vulnerabilities affecting JFrog
+Artifactory: CVE-2026-42016, CVE-2026-42018, and CVE-2026-82329. Attackers
+are chaining these vulnerabilities to bypass authentication, escalate
+privileges, and gain administrative control over vulnerable Artifactory
+instances. Observed post-exploitation activity includes the creation of
+persistent administrator accounts, the deployment of malicious Groovy
+plugins for code execution, and the installation of Rust-based backdoors to
+establish persistence. This blogpost provides an analysis of the
+exploitation patterns observed, the impact on affected organizations, and
+actionable guidance for security teams to detect and remediate these
+threats.=E2=80=9D
+
+------------------------------
+
+
+
+Title: PaperCut Replaces Emergency Patches With Fixes for Two Actively
+Exploited Flaws
+
+
+Date Published: September 11, 2026
+
+
+https://thehackernews.com/2026/09/papercut-replaces-emergency-patches.html
+
+
+Excerpt: =E2=80=9CPaperCut on Thursday released a new security maintenance re=
+lease
+that replaces all previously published emergency patches that were pushed
+to address two security flaws that have come under active exploitation. The
+software development company said PaperCut NG/MF versions 26.0.5, 25.0.13
+and 24.1.10 are now available for customers to download. "These are Regular
+Maintenance Releases (MR) that have gone through complete QA testing," it
+said. "They contain all of the security fixes issued in Emergency Patch
+Releases 1, 2 and 3, plus additional security hardening, and they have been
+through our standard release testing process." It's worth noting that the
+release supersedes the emergency patches that were shipped to address two
+security flaws as well as two regressions, along with various hardening and
+mitigation against potential attack chains.=E2=80=9D
+
+------------------------------
+
+
+
+Title: MacSync: The Evasive macOS Stealer Exploiting ClickFix Lures
+
+
+Date Published: September 8, 2026
+
+
+
+https://www.seqrite.com/blog/macsync-the-evasive-macos-stealer-exploiting-cli=
+ckfix-lures/
+
+
+Excerpt: =E2=80=9CMacSync Stealer is a family of macOS information stealers a=
+nd
+remote-access stagers designed to evade detection and sold commercially
+under a malware-as-a-service (MaaS) model. In the attack chain, MacSync
+binaries are native stagers and multi-part exfiltration engines. Rather
+than standalone harvesters, the payloads are lightweight 64-bit Mach-O
+executables that detach silently from terminal sessions, load
+credential-dumping modules directly into memory, and reliably exfiltrate
+stolen credentials back to campaign infrastructure. MacSync is delivered
+primarily through ClickFix social engineering and search engine
+malvertising. It uses a modular, multi-tier execution strategy to bypass
+Apple Gatekeeper, XProtect, and endpoint detection and response (EDR) tools
+while keeping a minimal footprint on disk. MacSync campaigns impersonate
+popular productivity, messaging, and software development tools to target
+professionals.=E2=80=9D
+
+------------------------------
+
+
+
+--=20
+
+Threat Intelligence Coordinator
+
+--===============5451736755466115481==
+Content-Type: text/html; charset="utf-8"
+Content-Transfer-Encoding: quoted-printable
+MIME-Version: 1.0
+
+<div dir=3D"ltr"><div><span id=3D"gmail-docs-internal-guid-909d9c06-7fff-e14f=
+-5abf-ccdf6a97d56b"><p dir=3D"ltr" style=3D"line-height:1.2;margin-top:0pt;ma=
+rgin-bottom:0pt"><span style=3D"font-size:16pt;font-family:Calibri,sans-serif=
+;color:rgb(255,255,255);background-color:rgb(0,0,0);font-weight:700;font-vari=
+ant:normal;vertical-align:baseline;white-space:pre-wrap">TLP:CLEAR</span></p>=
+<br><p dir=3D"ltr" style=3D"line-height:1.2;text-align:center;margin-top:0pt;=
+margin-bottom:0pt"><span style=3D"font-size:18pt;font-family:Calibri,sans-ser=
+if;color:rgb(0,0,0);background-color:transparent;font-weight:700;font-style:i=
+talic;font-variant:normal;text-decoration:underline;vertical-align:baseline;w=
+hite-space:pre-wrap">[IT-ISAC] Open Source News September 11, 2026</span></p>=
+<br><br><p dir=3D"ltr" style=3D"line-height:1.44;margin:0pt 31pt"><span style=
+=3D"font-size:12pt;font-family:Calibri,sans-serif;color:rgb(0,0,0);background=
+-color:transparent;font-weight:700;font-variant:normal;vertical-align:baselin=
+e;white-space:pre-wrap">Title: </span><span style=3D"font-size:12pt;font-fami=
+ly:Calibri,sans-serif;color:rgb(0,0,0);background-color:transparent;font-weig=
+ht:700;font-variant:normal;text-decoration:underline;vertical-align:baseline;=
+white-space:pre-wrap">DarkTortilla Malware: How It Works and How to Test Your=
+ Defenses</span></p><p dir=3D"ltr" style=3D"line-height:1.44;margin:0pt 31pt"=
+><br></p><br><p dir=3D"ltr" style=3D"line-height:1.44;margin:0pt 31pt"><span =
+style=3D"font-size:12pt;font-family:Calibri,sans-serif;color:rgb(0,0,0);backg=
+round-color:transparent;font-weight:700;font-variant:normal;vertical-align:ba=
+seline;white-space:pre-wrap">Date Published: </span><span style=3D"font-size:=
+12pt;font-family:Calibri,sans-serif;color:rgb(0,0,0);background-color:transpa=
+rent;font-variant:normal;vertical-align:baseline;white-space:pre-wrap">Septem=
+ber 11, 2026</span></p><p dir=3D"ltr" style=3D"line-height:1.44;margin:0pt 31=
+pt"><br></p><p dir=3D"ltr" style=3D"line-height:1.44;margin:0pt 31pt"><br></p=
+><p dir=3D"ltr" style=3D"line-height:1.44;margin:0pt 31pt"><span style=3D"fon=
+t-size:12pt;font-family:Calibri,sans-serif;color:rgb(17,85,204);background-co=
+lor:transparent;font-variant:normal;text-decoration:underline;vertical-align:=
+baseline;white-space:pre-wrap"><a href=3D"https://www.picussecurity.com/resou=
+rce/blog/darktortilla-malware-how-it-works-and-how-to-test-your-defenses">htt=
+ps://www.picussecurity.com/resource/blog/darktortilla-malware-how-it-works-an=
+d-how-to-test-your-defenses</a></span></p><br><br><p dir=3D"ltr" style=3D"lin=
+e-height:1.44;margin:0pt 31pt"><span style=3D"font-size:12pt;font-family:Cali=
+bri,sans-serif;color:rgb(0,0,0);background-color:transparent;font-weight:700;=
+font-variant:normal;vertical-align:baseline;white-space:pre-wrap">Excerpt:</s=
+pan><span style=3D"font-size:12pt;font-family:Calibri,sans-serif;color:rgb(0,=
+0,0);background-color:transparent;font-variant:normal;vertical-align:baseline=
+;white-space:pre-wrap"> =E2=80=9CDarkTortilla is a highly configurable .NET-b=
+ased crypter and multi-stage loader active since at least August 2015. It tar=
+gets Windows systems, spreading through logistics-themed phishing emails. Unl=
+ike typical loaders, DarkTortilla hides its encrypted configuration inside bi=
+tmap pixel data and can pull its core processor DLL from public paste sites. =
+It runs payloads only inside injected legitimate processes, applies three int=
+erchangeable persistence mechanisms, and pairs a WatchDog executable with the=
+ loader so each restarts the other. In this blog, we will explain how DarkTor=
+tilla works, from delivery to payload injection, and show how Picus helps you=
+ validate your security controls against this malware.=E2=80=9D</span></p><br=
+><p dir=3D"ltr" style=3D"line-height:1.2;margin:0pt 30.75pt 0pt 36pt"></p><hr=
+><p></p><br><br><p dir=3D"ltr" style=3D"line-height:1.44;margin:0pt 31pt"><sp=
+an style=3D"font-size:12pt;font-family:Calibri,sans-serif;color:rgb(0,0,0);ba=
+ckground-color:transparent;font-weight:700;font-variant:normal;vertical-align=
+:baseline;white-space:pre-wrap">Title: </span><span style=3D"font-size:12pt;f=
+ont-family:Calibri,sans-serif;color:rgb(0,0,0);background-color:transparent;f=
+ont-weight:700;font-variant:normal;text-decoration:underline;vertical-align:b=
+aseline;white-space:pre-wrap">GuardBreaker: Derailing AI-Assisted Malware Ana=
+lysis With a Code Comment</span></p><p dir=3D"ltr" style=3D"line-height:1.44;=
+margin:0pt 31pt"><br></p><br><p dir=3D"ltr" style=3D"line-height:1.44;margin:=
+0pt 31pt"><span style=3D"font-size:12pt;font-family:Calibri,sans-serif;color:=
+rgb(0,0,0);background-color:transparent;font-weight:700;font-variant:normal;v=
+ertical-align:baseline;white-space:pre-wrap">Date Published:</span><span styl=
+e=3D"font-size:12pt;font-family:Calibri,sans-serif;color:rgb(0,0,0);backgroun=
+d-color:transparent;font-variant:normal;vertical-align:baseline;white-space:p=
+re-wrap"> September 10, 2026</span></p><br><br><p dir=3D"ltr" style=3D"line-h=
+eight:1.44;margin:0pt 31pt"><span style=3D"font-size:12pt;font-family:Calibri=
+,sans-serif;color:rgb(17,85,204);background-color:transparent;font-variant:no=
+rmal;text-decoration:underline;vertical-align:baseline;white-space:pre-wrap">=
+<a href=3D"https://www.welivesecurity.com/en/business-security/guardbreaker-d=
+erailing-ai-assisted-malware-analysis-code-comment/">https://www.welivesecuri=
+ty.com/en/business-security/guardbreaker-derailing-ai-assisted-malware-analys=
+is-code-comment/</a></span></p><br><br><p dir=3D"ltr" style=3D"line-height:1.=
+44;margin:0pt 31pt"><span style=3D"font-size:12pt;font-family:Calibri,sans-se=
+rif;color:rgb(0,0,0);background-color:transparent;font-weight:700;font-varian=
+t:normal;vertical-align:baseline;white-space:pre-wrap">Excerpt: </span><span =
+style=3D"font-size:12pt;font-family:Calibri,sans-serif;color:rgb(0,0,0);backg=
+round-color:transparent;font-variant:normal;vertical-align:baseline;white-spa=
+ce:pre-wrap">=E2=80=9CMalware developers have long adapted their code and tac=
+tics to the defenses and scrutiny that are likely to stand in their way. Usin=
+g various evasion and anti-analysis methods, they routinely attempt to hinder=
+ code analysis or prevent their malware from revealing its true behavior whil=
+e under inspection. Other tools =E2=80=93 notably, EDR killers, documented ex=
+tensively by ESET researchers =E2=80=93 go straight after security solutions =
+themselves. As LLM-based tools increasingly assist with various security task=
+s, including code triage and analysis, it was only a matter of time before th=
+reat actors began to look for practical ways to subvert them, too. Alongside =
+conventional evasion techniques, some are taking a different tack: the advers=
+arial input that=E2=80=99s intended to frustrate analysis is left in plain si=
+ght.=E2=80=9D</span></p><p dir=3D"ltr" style=3D"line-height:1.44;margin-right=
+:31pt;margin-top:0pt;margin-bottom:0pt"><br></p><p dir=3D"ltr" style=3D"line-=
+height:1.44;margin:0pt 31pt"></p><hr><p></p><p dir=3D"ltr" style=3D"line-heig=
+ht:1.44;margin:0pt 31pt"><br></p><p dir=3D"ltr" style=3D"line-height:1.44;mar=
+gin:0pt 31pt"><br></p><p dir=3D"ltr" style=3D"line-height:1.44;margin:0pt 31p=
+t"><span style=3D"font-size:12pt;font-family:Calibri,sans-serif;color:rgb(0,0=
+,0);background-color:transparent;font-weight:700;font-variant:normal;vertical=
+-align:baseline;white-space:pre-wrap">Title: </span><span style=3D"font-size:=
+12pt;font-family:Calibri,sans-serif;color:rgb(0,0,0);background-color:transpa=
+rent;font-weight:700;font-variant:normal;text-decoration:underline;vertical-a=
+lign:baseline;white-space:pre-wrap">Trezor Says 347,000 Users Received Phishi=
+ng Emails After Brevo Hack</span></p><p dir=3D"ltr" style=3D"line-height:1.44=
+;margin:0pt 31pt"><br></p><br><p dir=3D"ltr" style=3D"line-height:1.44;margin=
+:0pt 31pt"><span style=3D"font-size:12pt;font-family:Calibri,sans-serif;color=
+:rgb(0,0,0);background-color:transparent;font-weight:700;font-variant:normal;=
+vertical-align:baseline;white-space:pre-wrap">Date Published: </span><span st=
+yle=3D"font-size:12pt;font-family:Calibri,sans-serif;color:rgb(0,0,0);backgro=
+und-color:transparent;font-variant:normal;vertical-align:baseline;white-space=
+:pre-wrap">September 11, 2026</span></p><br><br><p dir=3D"ltr" style=3D"line-=
+height:1.44;margin:0pt 31pt"><span style=3D"font-size:12pt;font-family:Calibr=
+i,sans-serif;color:rgb(17,85,204);background-color:transparent;font-variant:n=
+ormal;text-decoration:underline;vertical-align:baseline;white-space:pre-wrap"=
+><a href=3D"https://www.securityweek.com/trezor-says-347000-users-received-ph=
+ishing-emails-after-brevo-hack/">https://www.securityweek.com/trezor-says-347=
+000-users-received-phishing-emails-after-brevo-hack/</a></span></p><br><br><p=
+ dir=3D"ltr" style=3D"line-height:1.44;margin:0pt 31pt"><span style=3D"font-s=
+ize:12pt;font-family:Calibri,sans-serif;color:rgb(0,0,0);background-color:tra=
+nsparent;font-weight:700;font-variant:normal;vertical-align:baseline;white-sp=
+ace:pre-wrap">Excerpt:</span><span style=3D"font-size:12pt;font-family:Calibr=
+i,sans-serif;color:rgb(0,0,0);background-color:transparent;font-variant:norma=
+l;vertical-align:baseline;white-space:pre-wrap"> =E2=80=9CCold cryptocurrency=
+ storage provider Trezor says roughly 347,000 of its customers received phish=
+ing emails after a third-party marketing platform used by the company was hac=
+ked. The incident involved the marketing platform Brevo, which Trezor uses fo=
+r newsletters. Brevo said an attacker exploited how it handles SAML Single Si=
+gn-On (SSO) to access 138 accounts. =E2=80=9CThe attacker created a Brevo acc=
+ount and enabled single sign-on (SSO) on it, then invited legitimate Brevo us=
+ers into that SSO configuration. Using their own identity provider, they were=
+ able to sign in as those invited users, which by itself is expected behavior=
+ for SSO,=E2=80=9D Brevo explained. Swiss Bitcoin hardware wallet maker BitBo=
+x and crypto tax calculator CoinTracking also appear to have been hit by the =
+Brevo hack, but they haven=E2=80=99t shared details on the impact and have no=
+t named Brevo as the source of the incident.=E2=80=9D</span></p><p dir=3D"ltr=
+" style=3D"line-height:1.44;margin:0pt 31pt"><br></p><p dir=3D"ltr" style=3D"=
+line-height:1.2;margin:0pt 30.75pt 0pt 36pt"></p><hr><p></p><p dir=3D"ltr" st=
+yle=3D"line-height:1.44;margin:0pt 31pt"><br></p><p dir=3D"ltr" style=3D"line=
+-height:1.44;margin:0pt 31pt"><br></p><p dir=3D"ltr" style=3D"line-height:1.4=
+4;margin:0pt 31pt"><span style=3D"font-size:12pt;font-family:Calibri,sans-ser=
+if;color:rgb(0,0,0);background-color:transparent;font-weight:700;font-variant=
+:normal;vertical-align:baseline;white-space:pre-wrap">Title: </span><span sty=
+le=3D"font-size:12pt;font-family:Calibri,sans-serif;color:rgb(0,0,0);backgrou=
+nd-color:transparent;font-weight:700;font-variant:normal;text-decoration:unde=
+rline;vertical-align:baseline;white-space:pre-wrap">Security Update: Septembe=
+r 2026 Incident Report</span></p><p dir=3D"ltr" style=3D"line-height:1.44;mar=
+gin:0pt 31pt"><br></p><br><p dir=3D"ltr" style=3D"line-height:1.44;margin:0pt=
+ 31pt"><span style=3D"font-size:12pt;font-family:Calibri,sans-serif;color:rgb=
+(0,0,0);background-color:transparent;font-weight:700;font-variant:normal;vert=
+ical-align:baseline;white-space:pre-wrap">Date Published: </span><span style=
+=3D"font-size:12pt;font-family:Calibri,sans-serif;color:rgb(0,0,0);background=
+-color:transparent;font-variant:normal;vertical-align:baseline;white-space:pr=
+e-wrap">September 9, 2026</span></p><br><br><p dir=3D"ltr" style=3D"line-heig=
+ht:1.44;margin:0pt 31pt"><span style=3D"font-size:12pt;font-family:Calibri,sa=
+ns-serif;color:rgb(17,85,204);background-color:transparent;font-variant:norma=
+l;text-decoration:underline;vertical-align:baseline;white-space:pre-wrap"><a =
+href=3D"https://surfshark.com/blog/security-update-september-2026-incident-re=
+port">https://surfshark.com/blog/security-update-september-2026-incident-repo=
+rt</a></span></p><br><br><p dir=3D"ltr" style=3D"line-height:1.44;margin:0pt =
+31pt"><span style=3D"font-size:12pt;font-family:Calibri,sans-serif;color:rgb(=
+0,0,0);background-color:transparent;font-weight:700;font-variant:normal;verti=
+cal-align:baseline;white-space:pre-wrap">Excerpt:</span><span style=3D"font-s=
+ize:12pt;font-family:Calibri,sans-serif;color:rgb(0,0,0);background-color:tra=
+nsparent;font-variant:normal;vertical-align:baseline;white-space:pre-wrap"> =
+=E2=80=9COn the 2nd of September we confirmed an unusual activity within one =
+of our internal test servers and immediately began our response. After identi=
+fying that the server has been accessed by an unauthorized party, we containe=
+d the incident on the same day. Further remediation was done by 5th September=
+. Based on our investigation, we have confirmed that no user data and VPN ser=
+vices were affected. No, it does not affect our customers and no user action =
+is required. The system involved was an internal engineering environment. By =
+design, it does not store or process any user data, and it is kept separate f=
+rom the production systems that deliver our service. Personal information was=
+ never held and accessible from here, VPN traffic and browsing activity are n=
+ot logged or retained in the first place and the apps and browser extensions =
+on your devices were not altered in any way. Due to a human error, an interna=
+l test server, used by our engineering teams was misconfigured in a way that =
+made it reachable from the internet. Through that server, limited internal en=
+gineering material stored in one of our environments was accessed by an unaut=
+horized third party.=E2=80=9D</span></p><p dir=3D"ltr" style=3D"line-height:1=
+.44;margin:0pt 31pt"><br></p><p dir=3D"ltr" style=3D"line-height:1.2;margin:0=
+pt 30.75pt 0pt 36pt"></p><hr><p></p><br><br><p dir=3D"ltr" style=3D"line-heig=
+ht:1.44;margin:0pt 31pt"><span style=3D"font-size:12pt;font-family:Calibri,sa=
+ns-serif;color:rgb(0,0,0);background-color:transparent;font-weight:700;font-v=
+ariant:normal;vertical-align:baseline;white-space:pre-wrap">Title: </span><sp=
+an style=3D"font-size:12pt;font-family:Calibri,sans-serif;color:rgb(0,0,0);ba=
+ckground-color:transparent;font-weight:700;font-variant:normal;text-decoratio=
+n:underline;vertical-align:baseline;white-space:pre-wrap">Detecting and Count=
+ering Misuse of AI: September 2026</span></p><p dir=3D"ltr" style=3D"line-hei=
+ght:1.44;margin:0pt 31pt"><br></p><br><p dir=3D"ltr" style=3D"line-height:1.4=
+4;margin:0pt 31pt"><span style=3D"font-size:12pt;font-family:Calibri,sans-ser=
+if;color:rgb(0,0,0);background-color:transparent;font-weight:700;font-variant=
+:normal;vertical-align:baseline;white-space:pre-wrap">Date Published:</span><=
+span style=3D"font-size:12pt;font-family:Calibri,sans-serif;color:rgb(0,0,0);=
+background-color:transparent;font-variant:normal;vertical-align:baseline;whit=
+e-space:pre-wrap"> September 10, 2026</span></p><br><br><p dir=3D"ltr" style=
+=3D"line-height:1.44;margin:0pt 31pt"><span style=3D"font-size:12pt;font-fami=
+ly:Calibri,sans-serif;color:rgb(17,85,204);background-color:transparent;font-=
+variant:normal;text-decoration:underline;vertical-align:baseline;white-space:=
+pre-wrap"><a href=3D"https://www.anthropic.com/threat-intelligence-report-sep=
+tember-2026">https://www.anthropic.com/threat-intelligence-report-september-2=
+026</a></span></p><br><br><p dir=3D"ltr" style=3D"line-height:1.44;margin:0pt=
+ 31pt"><span style=3D"font-size:12pt;font-family:Calibri,sans-serif;color:rgb=
+(0,0,0);background-color:transparent;font-weight:700;font-variant:normal;vert=
+ical-align:baseline;white-space:pre-wrap">Excerpt: </span><span style=3D"font=
+-size:12pt;font-family:Calibri,sans-serif;color:rgb(0,0,0);background-color:t=
+ransparent;font-variant:normal;vertical-align:baseline;white-space:pre-wrap">=
+=E2=80=9COver the past eight months, our Threat Intelligence team identified =
+and disrupted operations in which threat actors tried to use Claude for malic=
+ious activity. In this report, we share case studies from those operations an=
+d describe how malicious use of Claude has evolved since our previous threat =
+reports in March, August, and November 2025. In each case, we disrupted the a=
+ctivity, used what we learned to strengthen our safeguards, and shared intell=
+igence with authorities and industry partners, where appropriate. This report=
+ covers activity we disrupted between December 2025 and August 2026 across se=
+ven harm areas: cyber operations, influence operations, surveillance, scams a=
+nd fraud, biological misuse, conventional weapons development, and distillati=
+on. Claude Haiku, Sonnet, and Opus models were used. None of the misuse cases=
+ involved the use of Claude Fable or Mythos-class models, with the exception =
+of one illicit distillation case.=E2=80=9D=C2=A0</span></p><br><p dir=3D"ltr"=
+ style=3D"line-height:1.2;margin:0pt 30.75pt 0pt 36pt"></p><hr><p></p><br><br=
+><p dir=3D"ltr" style=3D"line-height:1.44;margin:0pt 31pt"><span style=3D"fon=
+t-size:12pt;font-family:Calibri,sans-serif;color:rgb(0,0,0);background-color:=
+transparent;font-weight:700;font-variant:normal;vertical-align:baseline;white=
+-space:pre-wrap">Title: </span><span style=3D"font-size:12pt;font-family:Cali=
+bri,sans-serif;color:rgb(0,0,0);background-color:transparent;font-weight:700;=
+font-variant:normal;text-decoration:underline;vertical-align:baseline;white-s=
+pace:pre-wrap">Measuring Tactical Intelligence Targeting and Conventional Wea=
+pons Capabilities of AI Models</span></p><br><br><p dir=3D"ltr" style=3D"line=
+-height:1.44;margin:0pt 31pt"><span style=3D"font-size:12pt;font-family:Calib=
+ri,sans-serif;color:rgb(0,0,0);background-color:transparent;font-weight:700;f=
+ont-variant:normal;vertical-align:baseline;white-space:pre-wrap">Date Publish=
+ed: </span><span style=3D"font-size:12pt;font-family:Calibri,sans-serif;color=
+:rgb(0,0,0);background-color:transparent;font-variant:normal;vertical-align:b=
+aseline;white-space:pre-wrap">September 10, 2026</span></p><br><br><p dir=3D"=
+ltr" style=3D"line-height:1.44;margin:0pt 31pt"><span style=3D"font-size:12pt=
+;font-family:Calibri,sans-serif;color:rgb(17,85,204);background-color:transpa=
+rent;font-variant:normal;text-decoration:underline;vertical-align:baseline;wh=
+ite-space:pre-wrap"><a href=3D"https://www.anthropic.com/research/intelligenc=
+e-targeting-conventional-weapons-capabilities">https://www.anthropic.com/rese=
+arch/intelligence-targeting-conventional-weapons-capabilities</a></span></p><=
+p dir=3D"ltr" style=3D"line-height:1.44;margin:0pt 31pt"><br></p><p dir=3D"lt=
+r" style=3D"line-height:1.44;margin:0pt 31pt"><br></p><p dir=3D"ltr" style=3D=
+"line-height:1.44;margin:0pt 31pt"><span style=3D"font-size:12pt;font-family:=
+Calibri,sans-serif;color:rgb(0,0,0);background-color:transparent;font-weight:=
+700;font-variant:normal;vertical-align:baseline;white-space:pre-wrap">Excerpt=
+: </span><span style=3D"font-size:12pt;font-family:Calibri,sans-serif;color:r=
+gb(0,0,0);background-color:transparent;font-variant:normal;vertical-align:bas=
+eline;white-space:pre-wrap">=E2=80=9CCybersecurity and biorisk are among the =
+best-studied domains of risk from misuse of AI. But most of modern conflict o=
+ccurs in more conventional realms. Adversaries try to identify and target one=
+ another to collect intelligence. Combatants try to make conventional weapons=
+ more precise and less vulnerable to countermeasures. =E2=80=9CKill chains,=
+=E2=80=9D such as =E2=80=9Cfind, fix, track, target, engage, assess,=E2=80=9D=
+ are end-to-end conceptual models of these engagements. Making improvements i=
+n any step of this process has typically required expert human labor and judg=
+ment: experienced intelligence analysts or highly-trained engineers, for exam=
+ple. As AI shows tremendous progress in data analysis, software development, =
+and coding, can it apply these skills to the specialized domains associated w=
+ith national security? The Frontier Red Team has developed some complementary=
+ capability evaluations to better illustrate how AI progress is changing the =
+risk landscape across different parts of the kill chain. The evaluations show=
+ that models are making consistent progress on simulated intelligence and wea=
+pons development tasks. Open-weights models we tested on the same evaluations=
+ are behind the frontier (typically between Sonnet and Mythos-class models in=
+ performance), but often still show concerning levels of capability. Models w=
+ell short of the frontier will have intelligence and military applications.=
+=E2=80=9D</span></p><p dir=3D"ltr" style=3D"line-height:1.44;margin:0pt 31pt"=
+><br></p><p dir=3D"ltr" style=3D"line-height:1.2;margin:0pt 30.75pt 0pt 36pt"=
+></p><hr><p></p><br><p dir=3D"ltr" style=3D"line-height:1.44;margin-right:31p=
+t;margin-top:0pt;margin-bottom:0pt"><br></p><p dir=3D"ltr" style=3D"line-heig=
+ht:1.44;margin:0pt 31pt"><span style=3D"font-size:12pt;font-family:Calibri,sa=
+ns-serif;color:rgb(0,0,0);background-color:transparent;font-weight:700;font-v=
+ariant:normal;vertical-align:baseline;white-space:pre-wrap">Title: </span><sp=
+an style=3D"font-size:12pt;font-family:Calibri,sans-serif;color:rgb(0,0,0);ba=
+ckground-color:transparent;font-weight:700;font-variant:normal;text-decoratio=
+n:underline;vertical-align:baseline;white-space:pre-wrap">Gray Rabbits and th=
+e Tale of a One-Click Backdoor</span></p><p dir=3D"ltr" style=3D"line-height:=
+1.44;margin:0pt 31pt"><br></p><br><p dir=3D"ltr" style=3D"line-height:1.44;ma=
+rgin:0pt 31pt"><span style=3D"font-size:12pt;font-family:Calibri,sans-serif;c=
+olor:rgb(0,0,0);background-color:transparent;font-weight:700;font-variant:nor=
+mal;vertical-align:baseline;white-space:pre-wrap">Date Published: </span><spa=
+n style=3D"font-size:12pt;font-family:Calibri,sans-serif;color:rgb(0,0,0);bac=
+kground-color:transparent;font-variant:normal;vertical-align:baseline;white-s=
+pace:pre-wrap">September 10, 2026</span></p><p dir=3D"ltr" style=3D"line-heig=
+ht:1.44;margin:0pt 31pt"><br></p><p dir=3D"ltr" style=3D"line-height:1.44;mar=
+gin:0pt 31pt"><br></p><p dir=3D"ltr" style=3D"line-height:1.44;margin:0pt 31p=
+t"><span style=3D"font-size:12pt;font-family:Calibri,sans-serif;color:rgb(17,=
+85,204);background-color:transparent;font-variant:normal;text-decoration:unde=
+rline;vertical-align:baseline;white-space:pre-wrap"><a href=3D"https://www.ge=
+ndigital.com/blog/insights/research/one-click-backdoor-sogou">https://www.gen=
+digital.com/blog/insights/research/one-click-backdoor-sogou</a></span></p><br=
+><br><p dir=3D"ltr" style=3D"line-height:1.44;margin:0pt 31pt"><span style=3D=
+"font-size:12pt;font-family:Calibri,sans-serif;color:rgb(0,0,0);background-co=
+lor:transparent;font-weight:700;font-variant:normal;vertical-align:baseline;w=
+hite-space:pre-wrap">Excerpt:</span><span style=3D"font-size:12pt;font-family=
+:Calibri,sans-serif;color:rgb(0,0,0);background-color:transparent;font-varian=
+t:normal;vertical-align:baseline;white-space:pre-wrap"> =E2=80=9CGen Threat L=
+abs discovered a critical remote code execution vulnerability (CVE-2026-51990=
+) in Sogou Input Method, one of the most widely used Chinese-language input m=
+ethod editors with hundreds of millions of installations. The vulnerability c=
+hains three separate weaknesses into a single, one-click exploit: unvalidated=
+ command-line argument injection in the sgbiz: custom protocol handler, unres=
+tricted URL navigation in a CEF-based webview, and a severely outdated, unsan=
+dboxed Chromium browser engine. We observed this vulnerability actively explo=
+ited in the wild by the UNC3569 threat group to deploy the GRAYRABBIT backdoo=
+r through a crafted link.=E2=80=9D=C2=A0</span></p><p dir=3D"ltr" style=3D"li=
+ne-height:1.44;margin:0pt 31pt"><br></p><p dir=3D"ltr" style=3D"line-height:1=
+.2;margin:0pt 30.75pt 0pt 36pt"></p><hr><p></p><br><p dir=3D"ltr" style=3D"li=
+ne-height:1.44;margin:0pt 31pt 0pt 32pt"><span style=3D"font-size:12pt;font-f=
+amily:Calibri,sans-serif;color:rgb(0,0,0);background-color:transparent;font-w=
+eight:700;font-variant:normal;vertical-align:baseline;white-space:pre-wrap">=
+=C2=A0</span></p><p dir=3D"ltr" style=3D"line-height:1.44;margin:0pt 31pt 0pt=
+ 32pt"><span style=3D"font-size:12pt;font-family:Calibri,sans-serif;color:rgb=
+(0,0,0);background-color:transparent;font-weight:700;font-variant:normal;vert=
+ical-align:baseline;white-space:pre-wrap">Title:</span><span style=3D"font-si=
+ze:12pt;font-family:Calibri,sans-serif;color:rgb(0,0,0);background-color:tran=
+sparent;font-variant:normal;vertical-align:baseline;white-space:pre-wrap"> </=
+span><span style=3D"font-size:12pt;font-family:Calibri,sans-serif;color:rgb(0=
+,0,0);background-color:transparent;font-weight:700;font-variant:normal;text-d=
+ecoration:underline;vertical-align:baseline;white-space:pre-wrap">Artifactory=
+ Under Attack: In-the-Wild Exploitation of CVE-2026-42016, CVE-2026-42018 &am=
+p; CVE-2026-82329</span></p><br><br><p dir=3D"ltr" style=3D"line-height:1.44;=
+margin:0pt 31pt 0pt 32pt"><span style=3D"font-size:12pt;font-family:Calibri,s=
+ans-serif;color:rgb(0,0,0);background-color:transparent;font-weight:700;font-=
+variant:normal;vertical-align:baseline;white-space:pre-wrap">Date Published: =
+</span><span style=3D"font-size:12pt;font-family:Calibri,sans-serif;color:rgb=
+(0,0,0);background-color:transparent;font-variant:normal;vertical-align:basel=
+ine;white-space:pre-wrap">September 10, 2026</span></p><br><p dir=3D"ltr" sty=
+le=3D"line-height:1.2;margin:0pt 30.75pt 0pt 36pt"><span style=3D"font-size:1=
+2pt;font-family:Calibri,sans-serif;color:rgb(0,0,0);background-color:transpar=
+ent;font-variant:normal;vertical-align:baseline;white-space:pre-wrap">=C2=A0<=
+/span></p><p dir=3D"ltr" style=3D"line-height:1.44;margin:0pt 31pt 0pt 32pt">=
+<span style=3D"font-size:12pt;font-family:Calibri,sans-serif;color:rgb(17,85,=
+204);background-color:transparent;font-variant:normal;text-decoration:underli=
+ne;vertical-align:baseline;white-space:pre-wrap"><a href=3D"https://www.wiz.i=
+o/blog/artifactory-under-attack-in-the-wild-exploitation-of-cve-2026-42016-cv=
+e-2026-4201">https://www.wiz.io/blog/artifactory-under-attack-in-the-wild-exp=
+loitation-of-cve-2026-42016-cve-2026-4201</a></span></p><br><br><p dir=3D"ltr=
+" style=3D"line-height:1.44;margin:0pt 31pt"><span style=3D"font-size:12pt;fo=
+nt-family:Calibri,sans-serif;color:rgb(0,0,0);background-color:transparent;fo=
+nt-weight:700;font-variant:normal;vertical-align:baseline;white-space:pre-wra=
+p">Excerpt: </span><span style=3D"font-size:12pt;font-family:Calibri,sans-ser=
+if;color:rgb(0,0,0);background-color:transparent;font-variant:normal;vertical=
+-align:baseline;white-space:pre-wrap">=E2=80=9CWiz Research has identified ac=
+tive, in-the-wild exploitation of three critical and high-severity vulnerabil=
+ities affecting JFrog Artifactory: CVE-2026-42016, CVE-2026-42018, and CVE-20=
+26-82329. Attackers are chaining these vulnerabilities to bypass authenticati=
+on, escalate privileges, and gain administrative control over vulnerable Arti=
+factory instances. Observed post-exploitation activity includes the creation =
+of persistent administrator accounts, the deployment of malicious Groovy plug=
+ins for code execution, and the installation of Rust-based backdoors to estab=
+lish persistence. This blogpost provides an analysis of the exploitation patt=
+erns observed, the impact on affected organizations, and actionable guidance =
+for security teams to detect and remediate these threats.=E2=80=9D</span></p>=
+<br><p dir=3D"ltr" style=3D"line-height:1.2;margin:0pt 30.75pt 0pt 36pt"></p>=
+<hr><p></p><br><br><p dir=3D"ltr" style=3D"line-height:1.44;margin:0pt 31pt 0=
+pt 32pt"><span style=3D"font-size:12pt;font-family:Calibri,sans-serif;color:r=
+gb(0,0,0);background-color:transparent;font-weight:700;font-variant:normal;ve=
+rtical-align:baseline;white-space:pre-wrap">Title:</span><span style=3D"font-=
+size:12pt;font-family:Calibri,sans-serif;color:rgb(0,0,0);background-color:tr=
+ansparent;font-variant:normal;vertical-align:baseline;white-space:pre-wrap"> =
+</span><span style=3D"font-size:12pt;font-family:Calibri,sans-serif;color:rgb=
+(0,0,0);background-color:transparent;font-weight:700;font-variant:normal;text=
+-decoration:underline;vertical-align:baseline;white-space:pre-wrap">PaperCut =
+Replaces Emergency Patches With Fixes for Two Actively Exploited Flaws</span>=
+</p><br><br><p dir=3D"ltr" style=3D"line-height:1.44;margin:0pt 31pt 0pt 32pt=
+"><span style=3D"font-size:12pt;font-family:Calibri,sans-serif;color:rgb(0,0,=
+0);background-color:transparent;font-weight:700;font-variant:normal;vertical-=
+align:baseline;white-space:pre-wrap">Date Published: </span><span style=3D"fo=
+nt-size:12pt;font-family:Calibri,sans-serif;color:rgb(0,0,0);background-color=
+:transparent;font-variant:normal;vertical-align:baseline;white-space:pre-wrap=
+">September 11, 2026</span></p><br><br><p dir=3D"ltr" style=3D"line-height:1.=
+44;margin:0pt 31pt 0pt 32pt"><span style=3D"font-size:12pt;font-family:Calibr=
+i,sans-serif;color:rgb(17,85,204);background-color:transparent;font-variant:n=
+ormal;text-decoration:underline;vertical-align:baseline;white-space:pre-wrap"=
+><a href=3D"https://thehackernews.com/2026/09/papercut-replaces-emergency-pat=
+ches.html">https://thehackernews.com/2026/09/papercut-replaces-emergency-patc=
+hes.html</a></span></p><br><br><p dir=3D"ltr" style=3D"line-height:1.44;margi=
+n:0pt 31pt"><span style=3D"font-size:12pt;font-family:Calibri,sans-serif;colo=
+r:rgb(0,0,0);background-color:transparent;font-weight:700;font-variant:normal=
+;vertical-align:baseline;white-space:pre-wrap">Excerpt: </span><span style=3D=
+"font-size:12pt;font-family:Calibri,sans-serif;color:rgb(0,0,0);background-co=
+lor:transparent;font-variant:normal;vertical-align:baseline;white-space:pre-w=
+rap">=E2=80=9CPaperCut on Thursday released a new security maintenance releas=
+e that replaces all previously published emergency patches that were pushed t=
+o address two security flaws that have come under active exploitation. The so=
+ftware development company said PaperCut NG/MF versions 26.0.5, 25.0.13 and 2=
+4.1.10 are now available for customers to download. &quot;These are Regular M=
+aintenance Releases (MR) that have gone through complete QA testing,&quot; it=
+ said. &quot;They contain all of the security fixes issued in Emergency Patch=
+ Releases 1, 2 and 3, plus additional security hardening, and they have been =
+through our standard release testing process.&quot; It&#39;s worth noting tha=
+t the release supersedes the emergency patches that were shipped to address t=
+wo security flaws as well as two regressions, along with various hardening an=
+d mitigation against potential attack chains.=E2=80=9D</span></p><br><p dir=
+=3D"ltr" style=3D"line-height:1.2;margin:0pt 30.75pt 0pt 36pt"></p><hr><p></p=
+><br><br><p dir=3D"ltr" style=3D"line-height:1.44;margin:0pt 31pt 0pt 32pt"><=
+span style=3D"font-size:12pt;font-family:Calibri,sans-serif;color:rgb(0,0,0);=
+background-color:transparent;font-weight:700;font-variant:normal;vertical-ali=
+gn:baseline;white-space:pre-wrap">Title:</span><span style=3D"font-size:12pt;=
+font-family:Calibri,sans-serif;color:rgb(0,0,0);background-color:transparent;=
+font-variant:normal;vertical-align:baseline;white-space:pre-wrap"> </span><sp=
+an style=3D"font-size:12pt;font-family:Calibri,sans-serif;color:rgb(0,0,0);ba=
+ckground-color:transparent;font-weight:700;font-variant:normal;text-decoratio=
+n:underline;vertical-align:baseline;white-space:pre-wrap">MacSync: The Evasiv=
+e macOS Stealer Exploiting ClickFix Lures</span></p><br><br><p dir=3D"ltr" st=
+yle=3D"line-height:1.44;margin:0pt 31pt 0pt 32pt"><span style=3D"font-size:12=
+pt;font-family:Calibri,sans-serif;color:rgb(0,0,0);background-color:transpare=
+nt;font-weight:700;font-variant:normal;vertical-align:baseline;white-space:pr=
+e-wrap">Date Published: </span><span style=3D"font-size:12pt;font-family:Cali=
+bri,sans-serif;color:rgb(0,0,0);background-color:transparent;font-variant:nor=
+mal;vertical-align:baseline;white-space:pre-wrap">September 8, 2026</span></p=
+><p dir=3D"ltr" style=3D"line-height:1.44;margin:0pt 31pt 0pt 32pt"><br></p><=
+p dir=3D"ltr" style=3D"line-height:1.44;margin:0pt 31pt 0pt 32pt"><br></p><p =
+dir=3D"ltr" style=3D"line-height:1.44;margin:0pt 31pt 0pt 32pt"><span style=
+=3D"font-size:12pt;font-family:Calibri,sans-serif;color:rgb(17,85,204);backgr=
+ound-color:transparent;font-variant:normal;text-decoration:underline;vertical=
+-align:baseline;white-space:pre-wrap"><a href=3D"https://www.seqrite.com/blog=
+/macsync-the-evasive-macos-stealer-exploiting-clickfix-lures/">https://www.se=
+qrite.com/blog/macsync-the-evasive-macos-stealer-exploiting-clickfix-lures/</=
+a></span></p><br><br><p dir=3D"ltr" style=3D"line-height:1.44;margin:0pt 31pt=
+"><span style=3D"font-size:12pt;font-family:Calibri,sans-serif;color:rgb(0,0,=
+0);background-color:transparent;font-weight:700;font-variant:normal;vertical-=
+align:baseline;white-space:pre-wrap">Excerpt: </span><span style=3D"font-size=
+:12pt;font-family:Calibri,sans-serif;color:rgb(0,0,0);background-color:transp=
+arent;font-variant:normal;vertical-align:baseline;white-space:pre-wrap">=E2=
+=80=9CMacSync Stealer is a family of macOS information stealers and remote-ac=
+cess stagers designed to evade detection and sold commercially under a malwar=
+e-as-a-service (MaaS) model. In the attack chain, MacSync binaries are native=
+ stagers and multi-part exfiltration engines. Rather than standalone harveste=
+rs, the payloads are lightweight 64-bit Mach-O executables that detach silent=
+ly from terminal sessions, load credential-dumping modules directly into memo=
+ry, and reliably exfiltrate stolen credentials back to campaign infrastructur=
+e. MacSync is delivered primarily through ClickFix social engineering and sea=
+rch engine malvertising. It uses a modular, multi-tier execution strategy to =
+bypass Apple Gatekeeper, XProtect, and endpoint detection and response (EDR) =
+tools while keeping a minimal footprint on disk. MacSync campaigns impersonat=
+e popular productivity, messaging, and software development tools to target p=
+rofessionals.=E2=80=9D</span></p><br><p dir=3D"ltr" style=3D"line-height:1.2;=
+margin:0pt 30.75pt 0pt 36pt"></p><hr><p></p></span><br class=3D"gmail-Apple-i=
+nterchange-newline"></div><div><br></div><span class=3D"gmail_signature_prefi=
+x">-- </span></div></body></html>
+
+--===============5451736755466115481==--

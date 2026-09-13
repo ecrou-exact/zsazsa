@@ -2686,6 +2686,18 @@ def indicator_limit(filters) -> int:
     return max(1, min(limit, MAX_SEARCH_LIMIT))
 
 
+def _complex_query(and_parameters: list | None = None,
+                   not_parameters: list | None = None) -> dict:
+    """PyMISP's tag query builder, called without a connection.
+
+    It owns the shape MISP expects, but PyMISP only offers it as a method on a
+    connection, and the feed page builds the same query with no server to talk
+    to. It reads nothing off self, so it is handed None.
+    """
+    return PyMISP.build_complex_query(None, and_parameters=and_parameters,
+                                      not_parameters=not_parameters)
+
+
 def _indicator_search_kwargs(filters):
     """Build the PyMISP attribute-search kwargs from a feed's filter dict.
 
@@ -2714,12 +2726,11 @@ def _indicator_search_kwargs(filters):
         kwargs["org"] = org_terms
     # A flat list of tags is an OR, and MISP applies the limit to that, so two
     # included tags could cut every attribute carrying both out of the answer.
-    # build_complex_query is PyMISP's own helper for the AND/NOT form.
+    # The complex query asks for every included tag and none of the excluded.
     tags_inc = list(filters.get("tags_include") or [])
     tags_exc = list(filters.get("tags_exclude") or [])
     if tags_inc or tags_exc:
-        kwargs["tags"] = PyMISP.build_complex_query(and_parameters=tags_inc,
-                                                    not_parameters=tags_exc)
+        kwargs["tags"] = _complex_query(and_parameters=tags_inc, not_parameters=tags_exc)
     event_terms = list(filters.get("events_include") or []) + [f"!{e}" for e in filters.get("events_exclude") or []]
     if event_terms:
         kwargs["eventid"] = event_terms
@@ -3986,6 +3997,9 @@ def create_manual_collection_event(data: dict) -> str:
 
 
 NEWSLETTER_PENDING_TAG = 'zsazsa:newsletter-status="pending-review"'
+# Set when the parser read the mail but found nothing in it, so the review queue
+# can say so instead of offering an empty page.
+NEWSLETTER_EMPTY_TAG = 'zsazsa:newsletter-parse="no-articles"'
 _NEWSLETTER_REPORT_PREFIX = "Newsletter source: "
 # Records which parser produced a newsletter, so the review screen can re-parse
 # even when the source name differs from the parser name.
@@ -4006,7 +4020,8 @@ def _add_scraper_link(misp, event_ref, url: str) -> None:
 def create_newsletter_event(source: str, raw_email: str, report_title: str = "",
                             tlp: str = "", reliability: str = "", parser: str = "",
                             article_urls: list | None = None,
-                            status: str = "processed") -> str:
+                            status: str = "processed",
+                            parsed_articles: int | None = None) -> str:
     """Archive a newsletter as an event on the webapp MISP server.
 
     `source` is the collection-source name; it is recorded so the newsletter can
@@ -4015,7 +4030,8 @@ def create_newsletter_event(source: str, raw_email: str, report_title: str = "",
     them. `parser` records which parser produced it, so the review screen can
     re-parse even when the source name differs from the parser name. With
     status="pending-review" the event is tagged for the review queue before its
-    articles are pushed. Returns the new event UUID.
+    articles are pushed. `parsed_articles` is how many articles the parser found,
+    used to flag a newsletter that yielded none. Returns the new event UUID.
     """
     from pymisp import MISPEventReport
     misp = _misp()
@@ -4037,6 +4053,8 @@ def create_newsletter_event(source: str, raw_email: str, report_title: str = "",
         _tag_local(misp, uuid, f'{_NEWSLETTER_PARSER_TAG_PREFIX}"{parser}"')
     if status == "pending-review":
         _tag_local(misp, uuid, NEWSLETTER_PENDING_TAG)
+    if parsed_articles == 0:
+        _tag_local(misp, uuid, NEWSLETTER_EMPTY_TAG)
 
     if raw_email.strip():
         report = MISPEventReport()
@@ -4054,7 +4072,8 @@ def create_newsletter_event(source: str, raw_email: str, report_title: str = "",
 
 def list_pending_newsletters() -> list[dict]:
     """Newsletter events archived but awaiting manual review before their articles
-    are pushed. Returns lightweight dicts (uuid, info, date)."""
+    are pushed. Returns lightweight dicts (uuid, info, date, empty), where empty
+    says the parser found no articles in the mail."""
     misp = _misp()
     try:
         events = _search_all(misp, tags=[NEWSLETTER_PENDING_TAG],
@@ -4068,7 +4087,9 @@ def list_pending_newsletters() -> list[dict]:
         logger.exception("could not list pending newsletters")
         return []
     out = [
-        {"uuid": ev.uuid, "info": getattr(ev, "info", "") or "", "date": str(getattr(ev, "date", ""))}
+        {"uuid": ev.uuid, "info": getattr(ev, "info", "") or "", "date": str(getattr(ev, "date", "")),
+         "empty": any(getattr(t, "name", "") == NEWSLETTER_EMPTY_TAG
+                      for t in getattr(ev, "tags", []) or [])}
         for ev in events or []
     ]
     out.sort(key=lambda n: n["date"], reverse=True)

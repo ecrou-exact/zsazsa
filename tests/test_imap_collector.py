@@ -1,12 +1,44 @@
-"""Tests for the IMAP newsletter collector's pure parsing and matching logic.
+"""Tests for the IMAP newsletter collector: reading a body, matching a message
+to a source, and the two IMAP commands the collector sends.
 
     python -m unittest tests.test_imap_collector
 """
 
 import email
+import imaplib
 import unittest
+from unittest import mock
 
 from core import imap_collector
+
+
+# What a server sends back after storing the flags, as imaplib hands it over.
+STORED = f"1 (UID 7 FLAGS (\\Seen {imap_collector.PROCESSED_KEYWORD}))".encode()
+
+
+class FakeConnection:
+    """Just enough imaplib: uid() returns the (typ, data) pairs a server sends."""
+
+    def __init__(self, store_reply=("OK", [STORED])):
+        self.store_reply = store_reply
+        self.commands = []
+
+    def uid(self, command, *args):
+        self.commands.append((command, args))
+        if command == "search":
+            return "OK", [b"7"]
+        if command == "fetch":
+            return "OK", [(b"1 (UID 7 BODY[] {12}", b"Subject: x\n\nbody"), b")"]
+        return self.store_reply
+
+    def select(self, folder):
+        return "OK", [b"1"]
+
+    def close(self):
+        pass
+
+    def logout(self):
+        pass
 
 
 def _msg(headers: dict, body: str, subtype: str = "plain") -> email.message.Message:
@@ -60,6 +92,50 @@ class ExtractBody(unittest.TestCase):
         )
         m = email.message_from_string(raw)
         self.assertEqual(imap_collector.extract_body(m).strip(), "Real body")
+
+
+class Fetching(unittest.TestCase):
+    def test_fetch_does_not_mark_mail_as_read(self):
+        # A plain RFC822 fetch sets \Seen on every message read, including mail
+        # for no source at all, and the UNSEEN fallback would then skip it.
+        conn = FakeConnection()
+        with mock.patch.object(imap_collector, "_connect", return_value=conn):
+            messages = list(imap_collector.fetch_unprocessed({"folder": "INBOX"}))
+        self.assertEqual(len(messages), 1)
+        fetched = [args for command, args in conn.commands if command == "fetch"]
+        self.assertEqual(fetched, [(b"7", "(BODY.PEEK[])")])
+
+
+class MarkProcessed(unittest.TestCase):
+    """The keyword is what stops a mail being collected twice, so a server that
+    does not keep it has to be reported rather than assumed."""
+
+    def test_keyword_accepted(self):
+        conn = FakeConnection()
+        self.assertTrue(imap_collector.mark_processed(conn, b"7"))
+        command, args = conn.commands[0]
+        self.assertEqual(command, "store")
+        self.assertEqual(args[1], "+FLAGS")
+        self.assertIn(imap_collector.PROCESSED_KEYWORD, args[2])
+
+    def test_refused_by_the_server(self):
+        conn = FakeConnection(store_reply=("NO", [b"keywords not supported"]))
+        self.assertFalse(imap_collector.mark_processed(conn, b"7"))
+
+    def test_accepted_but_not_kept(self):
+        # An OK whose flags come back without the keyword: the message would be
+        # collected again on every run.
+        conn = FakeConnection(store_reply=("OK", [b"1 (UID 7 FLAGS (\\Seen))"]))
+        self.assertFalse(imap_collector.mark_processed(conn, b"7"))
+
+    def test_server_that_echoes_nothing_is_believed(self):
+        conn = FakeConnection(store_reply=("OK", [None]))
+        self.assertTrue(imap_collector.mark_processed(conn, b"7"))
+
+    def test_connection_error(self):
+        conn = mock.Mock()
+        conn.uid.side_effect = imaplib.IMAP4.error("connection closed")
+        self.assertFalse(imap_collector.mark_processed(conn, b"7"))
 
 
 class Matching(unittest.TestCase):

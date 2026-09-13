@@ -888,6 +888,7 @@ def newsletter_review_pending(uuid):
         articles=parsed["articles"],
         sections=_group_by_section(parsed["articles"]),
         form_action=url_for("data_collection.newsletter_review_pending", uuid=uuid),
+        back_url=url_for("data_collection.newsletter_pending"),
     )
 
 

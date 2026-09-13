@@ -19,7 +19,7 @@ from webapp.routes import data_collection
 
 _PENDING = [
     {"uuid": "u1", "info": "Zebra weekly", "date": "2026-01-05"},
-    {"uuid": "u2", "info": "apple digest", "date": "2026-03-09"},
+    {"uuid": "u2", "info": "apple digest", "date": "2026-03-09", "empty": True},
     {"uuid": "u3", "info": "Middle report", "date": "2026-02-02"},
 ]
 
@@ -45,7 +45,8 @@ class PendingQueue(unittest.TestCase):
                              "html.parser")
 
     def _titles(self, query=""):
-        return [td.get_text(strip=True) for td in self._page(query).select("tbody tr td:first-child")]
+        links = self._page(query).select("tbody tr td:first-child a")
+        return [a.get_text(strip=True) for a in links]
 
     def test_the_queue_says_how_many_are_waiting(self):
         self.assertIn("3 sources", self._page().get_text())
@@ -71,6 +72,13 @@ class PendingQueue(unittest.TestCase):
 
     def test_an_unknown_sort_key_leaves_the_order_alone(self):
         self.assertEqual(self._titles("?sort=nonsense&dir=asc"), self._titles())
+
+    def test_a_newsletter_with_no_articles_is_marked_as_such(self):
+        # Otherwise the only sign is an empty review page, which reads as a bug
+        # in the page rather than as a mail the parser made nothing of.
+        rows = self._page().select("tbody tr")
+        badges = [[b.get_text(strip=True) for b in row.select("span.badge")] for row in rows]
+        self.assertEqual(badges, [[], ["no articles"], []])
 
     def test_both_columns_offer_a_sort(self):
         self.assertEqual([a.get_text(strip=True) for a in self._page().select("thead th a")],
@@ -124,6 +132,29 @@ class PendingQueue(unittest.TestCase):
                                side_effect=RuntimeError("Tag is locked")):
             page = self._ignore(follow_redirects=True).data.decode()
         self.assertIn("Could not ignore Zebra weekly", page)
+
+    def test_a_mail_with_no_articles_says_so_instead_of_an_empty_form(self):
+        # The review page is the parse, so a mail it recognises nothing in would
+        # otherwise be a form with no rows and a send button that does nothing.
+        item = {"uuid": "u1", "feed": "ETDA", "parser": "ETDA CTI Robot",
+                "raw_email": "Subject: nothing this parser recognises\n"}
+        with mock.patch.object(misp_store, "get_newsletter_for_review", return_value=item):
+            page = BeautifulSoup(self.client.get("/collection/newsletter/pending/u1").data,
+                                 "html.parser")
+        self.assertIn("No articles were found in this e-mail", page.get_text())
+        self.assertEqual(page.select('input[name="selected"]'), [])
+
+    def test_review_from_the_queue_offers_the_way_back_to_it(self):
+        # Reached from the queue rather than from the paste box, so "Paste
+        # another" would send the analyst somewhere they have not been.
+        item = {"uuid": "u1", "feed": "ETDA", "parser": "ETDA CTI Robot", "raw_email": "body"}
+        with mock.patch.object(misp_store, "get_newsletter_for_review", return_value=item):
+            page = BeautifulSoup(self.client.get("/collection/newsletter/pending/u1").data,
+                                 "html.parser")
+        links = {a.get_text(strip=True): a["href"] for a in page.select("a.btn")}
+        self.assertEqual(links.get("Back to email sources"), "/collection/newsletter/pending")
+        self.assertEqual(links.get("Cancel"), "/collection/newsletter/pending")
+        self.assertNotIn("Paste another", links)
 
     def test_an_empty_queue_says_so(self):
         with mock.patch.object(misp_store, "list_pending_newsletters", return_value=[]):

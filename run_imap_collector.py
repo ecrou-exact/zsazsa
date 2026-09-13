@@ -25,7 +25,26 @@ from webapp import job_store, misp_store, newsletter_ingest, newsletter_parsers
 
 logger = logging.getLogger(__name__)
 
+# Cap on the message source archived when a mail has no readable text, so one
+# oversized attachment cannot push a multi-megabyte event report into MISP.
+_MAX_ARCHIVED_CHARS = 200_000
 
+
+def _archive_unreadable(source: dict, msg) -> None:
+    """Archive a matched message whose body could not be read.
+
+    A forward that carries the newsletter as an attachment leaves nothing to
+    parse. The message source is archived instead, so the mail can still be read
+    in MISP rather than being marked processed and dropped.
+    """
+    title = imap_collector.subject(msg) or f"{source['name']} newsletter"
+    misp_store.create_newsletter_event(
+        source["name"], msg.as_string()[:_MAX_ARCHIVED_CHARS], report_title=title,
+        reliability=source.get("reliability", ""), parser=source["parser"],
+        status="pending-review", parsed_articles=0,
+    )
+    logger.warning("%s: %r had no readable body, archived its source for review",
+                   source["name"], title)
 
 
 def _ingest_message(source: dict, body: str) -> None:
@@ -41,20 +60,24 @@ def _ingest_message(source: dict, body: str) -> None:
     tlp = parsed.get("tlp") or ""
     reliability = source.get("reliability", "")
     articles = newsletter_ingest.articles_from_parsed(parsed)
+    # The review page lists everything the parser read; only the ones carrying a
+    # link can be pushed, so the two counts are not always the same.
+    found = len(parsed["articles"])
 
     # Manual mode, or nothing parsed, leaves the newsletter for human review.
     if source.get("mode", "auto") == "manual" or not articles:
         misp_store.create_newsletter_event(
             feed, body, report_title=report_title, tlp=tlp,
             reliability=reliability, parser=parser, status="pending-review",
+            parsed_articles=found,
         )
-        logger.info("%s: archived newsletter for review (%d article(s))",
-                    feed, len(articles))
+        logger.info("%s: archived newsletter for review (%d article(s))", feed, found)
         return
 
     uuid = misp_store.create_newsletter_event(
         feed, body, report_title=report_title, tlp=tlp, reliability=reliability,
         parser=parser, article_urls=[a["url"] for a in articles],
+        parsed_articles=found,
     )
     counts = newsletter_ingest.publish_articles(feed, articles)
     # Redis pub/sub is fire-and-forget: if no subscriber received the push, fall
@@ -91,16 +114,17 @@ def _poll_mailbox(mailbox: dict) -> dict:
         if source is None:
             continue  # not for any source in this mailbox; leave it untouched
         body = imap_collector.extract_body(msg)
-        if not body.strip():
-            logger.warning("%s: a matched message had no readable body, skipping", name)
-            imap_collector.mark_processed(conn, uid)
-            continue
         try:
-            _ingest_message(source, body)
+            if body.strip():
+                _ingest_message(source, body)
+            else:
+                _archive_unreadable(source, msg)
         except Exception:
             logger.exception("%s: failed to ingest a message, will retry next run", name)
             continue
-        imap_collector.mark_processed(conn, uid)
+        if not imap_collector.mark_processed(conn, uid):
+            logger.error("%s: could not mark a message processed; it will be "
+                         "collected again on the next run", name)
         handled += 1
     logger.info("%s: processed %d new message(s)", name, handled)
     return {"processed": handled, "status": "ok", "message": f"{handled} message(s) ingested"}

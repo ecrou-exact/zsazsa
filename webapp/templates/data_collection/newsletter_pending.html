@@ -41,6 +41,10 @@
                class="text-decoration-none">
               <i class="fas fa-envelope me-2 text-muted"></i>{{ n.info }}
             </a>
+            {% if n.empty %}
+            <span class="badge text-bg-warning ms-2"
+                  title="The parser found no articles in this mail.">no articles</span>
+            {% endif %}
           </td>
           <td class="text-muted small" style="white-space:nowrap;">{{ n.date }}</td>
           <td class="text-end">
@@ -50,9 +54,9 @@
                   action="{{ url_for('data_collection.newsletter_ignore', uuid=n.uuid) }}"
                   onsubmit="return confirm('Ignore this email source? It leaves the review queue and none of its articles are collected.');">
               <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-              <button type="submit" class="btn btn-xs btn-outline-secondary"
-                      title="Take this out of the review queue. The mail stays archived in MISP.">
-                <i class="fas fa-eye-slash me-1"></i>Ignore
+              <button type="submit" class="btn btn-xs btn-outline-danger" aria-label="Ignore"
+                      title="Ignore this email source. It leaves the review queue and none of its articles are collected. The mail stays archived in MISP.">
+                <i class="fas fa-eye-slash"></i>
               </button>
             </form>
           </td>

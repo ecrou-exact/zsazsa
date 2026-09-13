@@ -1,5 +1,40 @@
 # Changelog
 
+## 1.0.5 - Under development
+
+Newsletters from a mailbox were read as if they had been pasted out of a mail
+client. The ETDA parser takes an edition in any of the shapes it arrives in now,
+and a mail it finds nothing in says so.
+
+### Upgrading
+
+Pull and restart. Nothing to migrate and no setting to change.
+
+Newsletters waiting for review are read again from the mail kept with them, so
+they list their articles on the next visit. Ones already sent to the scraper
+keep the names and tags they got. Deleting their event in MISP changes nothing.
+
+### Fixed
+
+- A forwarded newsletter without a plain text part gave no articles at all. The
+  review page said "0 of 0" while the mail itself was fine.
+- Articles from the mailing list layout all landed in "Uncategorised", titled
+  with their bullet or with the section name above them.
+- A mail with no readable text was marked as collected and dropped. It is kept
+  for review instead.
+- Reading a mail marked it as read, even mail that was not for any source.
+- A processed keyword the server refuses now goes to the log. Without it the
+  same mail comes back on every run.
+- An indicator feed with tag filters crashed. The AND/NOT query called PyMISP's
+  build_complex_query on the class instead of on a connection.
+
+### Added
+
+- The review queue marks a newsletter with no articles in it, and the review
+  page says so instead of showing an empty form.
+- Newsletter e-mails as test fixtures, read both as they arrived and with their
+  plain text part taken out.
+
 ## 1.0.4
 
 An indicator feed asking MISP for two tags at once came back empty while
