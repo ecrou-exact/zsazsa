@@ -167,14 +167,17 @@
           <div class="d-flex flex-wrap gap-2 mt-1">
             {% for a in audiences %}
             <div class="form-check form-check-inline me-0">
-              <input class="form-check-input" type="checkbox" name="audience" value="{{ a }}"
+              <input class="form-check-input der-audience-cb" type="checkbox" name="audience" value="{{ a }}"
                      id="der-aud-{{ loop.index }}"
                      {{ 'checked' if a in current_audiences }}>
               <label class="form-check-label small" for="der-aud-{{ loop.index }}">{{ a }}</label>
             </div>
             {% endfor %}
           </div>
-          <div class="form-text">Corresponds to the stakeholder <strong>role</strong>. Select all that apply.</div>
+          <div id="der-audience-warn" class="text-danger small mt-1" style="display:none;">
+            <i class="fas fa-triangle-exclamation me-1"></i>Select at least one audience.
+          </div>
+          <div class="form-text">Corresponds to the stakeholder <strong>role</strong>. Select at least one audience — required before this can be approved and published.</div>
         </div>
         <div class="mb-3">
           <label class="form-label">TLP</label>
@@ -284,6 +287,23 @@
 
     zsazsaRulezetSearch(resultPromise, rulesEl, techniqueIds.join(', '), 'attack');
   });
+})();
+
+/* ── Audience validation ── */
+(function() {
+  function _updateDerAudienceBtns() {
+    var checked = document.querySelectorAll('.der-audience-cb:checked').length > 0;
+    ['btn-der-submit', 'btn-der-save', 'btn-der-publish'].forEach(function(id) {
+      var b = document.getElementById(id);
+      if (b) b.disabled = !checked;
+    });
+    var warn = document.getElementById('der-audience-warn');
+    if (warn) warn.style.display = checked ? 'none' : '';
+  }
+  document.querySelectorAll('.der-audience-cb').forEach(function(cb) {
+    cb.addEventListener('change', _updateDerAudienceBtns);
+  });
+  _updateDerAudienceBtns();
 })();
 
 </script>
