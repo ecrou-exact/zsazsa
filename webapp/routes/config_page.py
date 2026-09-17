@@ -266,6 +266,8 @@ def _read() -> dict:
                                             'zsazsa:ctiproduct="threat-actor-profile"'),
         "TAG_INDICATOR_FEED": getattr(_config, "TAG_INDICATOR_FEED",
                                       'zsazsa:ctiproduct="indicator-feed"'),
+        "TAG_DETECTION_ENG": getattr(_config, "TAG_DETECTION_ENG",
+                                     'zsazsa:ctiproduct="detection-eng-request"'),
         "TAG_COLLECTION_FOLLOWUP": getattr(_config, "TAG_COLLECTION_FOLLOWUP", 'zsazsa:collection="follow-up"'),
         "TAG_COLLECTION_DISMISSED": getattr(_config, "TAG_COLLECTION_DISMISSED", 'zsazsa:event="dismiss"'),
         "RECOMMENDED_ACTIONS_IMMEDIATE": getattr(_config, "RECOMMENDED_ACTIONS_IMMEDIATE", []),
@@ -571,6 +573,7 @@ TAG_VEA         = {values['TAG_VEA']!r}
 TAG_BRIEFING    = {values['TAG_BRIEFING']!r}
 TAG_TLR         = {values['TAG_TLR']!r}
 TAG_INDICATOR_FEED = {values['TAG_INDICATOR_FEED']!r}
+TAG_DETECTION_ENG = {values['TAG_DETECTION_ENG']!r}
 TAG_THREAT_ACTOR_PROFILE = {values['TAG_THREAT_ACTOR_PROFILE']!r}
 TAG_COLLECTION_FOLLOWUP = {values['TAG_COLLECTION_FOLLOWUP']!r}
 TAG_COLLECTION_DISMISSED = {values['TAG_COLLECTION_DISMISSED']!r}
@@ -763,6 +766,7 @@ def index():
             "TAG_TLR": _form_tag("TAG_TLR"),
             "TAG_THREAT_ACTOR_PROFILE": _form_tag("TAG_THREAT_ACTOR_PROFILE"),
             "TAG_INDICATOR_FEED": _form_tag("TAG_INDICATOR_FEED"),
+            "TAG_DETECTION_ENG": _form_tag("TAG_DETECTION_ENG"),
             "TAG_COLLECTION_FOLLOWUP": _form_tag("TAG_COLLECTION_FOLLOWUP"),
             "TAG_COLLECTION_DISMISSED": _form_tag("TAG_COLLECTION_DISMISSED"),
             "RECOMMENDED_ACTIONS_IMMEDIATE": lines("RECOMMENDED_ACTIONS_IMMEDIATE"),
