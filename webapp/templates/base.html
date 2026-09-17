@@ -29,13 +29,40 @@
   function zsazsaErrorText(err) {
     return (err && err.message) ? err.message : String(err);
   }
+
+  // Shared across every Rulezet CVE/ATT&CK lookup (VEA wizard, Threat actor
+  // profile): appends "title — url" to a textarea, deduplicated, as one line.
+  // Used by both the search-results modal (rulezet-search-modal.js) and the
+  // single-rule code modal (rulezet-code-modal.js).
+  function zsazsaRuleReferenceLine(rule) {
+    return (rule.title || 'Rule') + ' — ' + rule.url;
+  }
+
+  function zsazsaAddRuleReference(rule, targetTextareaEl) {
+    if (!targetTextareaEl) return;
+    var line = zsazsaRuleReferenceLine(rule);
+    var existing = targetTextareaEl.value.split('\n').map(function(l) { return l.trim(); }).filter(Boolean);
+    if (!existing.includes(line)) existing.push(line);
+    targetTextareaEl.value = existing.join('\n');
+  }
+
+  // The textarea itself is the source of truth for "already added": a rule
+  // whose "title — url" line is already there stays excluded from later
+  // searches too, even after the modal is closed and reopened.
+  function zsazsaHasRuleReference(rule, targetTextareaEl) {
+    if (!targetTextareaEl) return false;
+    var line = zsazsaRuleReferenceLine(rule);
+    return targetTextareaEl.value.split('\n').map(function(l) { return l.trim(); }).includes(line);
+  }
   </script>
   <link rel="icon" type="image/svg+xml" href="{{ url_for('static', filename='favicon.svg') }}">
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.2/css/bootstrap.min.css" crossorigin="anonymous" referrerpolicy="no-referrer">
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" crossorigin="anonymous" referrerpolicy="no-referrer">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/github.min.css" crossorigin="anonymous" referrerpolicy="no-referrer">
   {# Versioned so a released style change reaches browsers that still hold the
      previous stylesheet in cache. #}
   <link rel="stylesheet" href="{{ url_for('static', filename='css/app.css') }}?v={{ app_version }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/rulezet.css') }}?v={{ app_version }}">
 </head>
 <body>
 
@@ -743,6 +770,8 @@
 </div>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.2/js/bootstrap.bundle.min.js" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+<script src="{{ url_for('static', filename='js/rulezet-code-modal.js') }}?v={{ app_version }}"></script>
+<script src="{{ url_for('static', filename='js/rulezet-search-modal.js') }}?v={{ app_version }}"></script>
 <script>
   document.addEventListener('DOMContentLoaded', function() {
     document.querySelectorAll('[data-gms-search]').forEach(function(searchInput) {
