@@ -5659,6 +5659,7 @@ def _briefing_obj(data):
     _oa(obj, "story-count", str(count))
     _oa(obj, "escalations", data.get("escalations"))
     _oa(obj, "notes", data.get("notes"))
+    _oa(obj, "detection-rules", data.get("detection_rules"))
     _oa_json(obj, "geographic-scope", data.get("geographic_scope", []))
     _oa_json(obj, "sectors", data.get("sectors", []))
     _oa_json(obj, "threat-actors", data.get("threat_actors", []))
@@ -5685,7 +5686,7 @@ def _briefing_obj(data):
 # write dict from this rather than listing the fields again.
 _BRIEFING_FIELDS = (
     "date", "title", "author", "tlp", "review_state", "story_count",
-    "escalations", "notes", "summary", "summary_stale",
+    "escalations", "notes", "detection_rules", "summary", "summary_stale",
     "geographic_scope", "sectors", "threat_actors", "mitre_attack_techniques",
     "threat_types", "technology", "vendor", "incident", "campaign",
     "creator", "approved_by",
@@ -5725,6 +5726,7 @@ def _briefing_ns(event):
         story_count=int(g("story-count") or "0"),
         escalations=g("escalations"),
         notes=g("notes"),
+        detection_rules=g("detection-rules"),
         geographic_scope=_json_list(_obj_attr(obj, "geographic-scope")),
         sectors=_json_list(_obj_attr(obj, "sectors")),
         threat_actors=_json_list(_obj_attr(obj, "threat-actors")),

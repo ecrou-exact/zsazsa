@@ -36,6 +36,7 @@ def _render_briefing_form(
     tlp: str,
     escalations: str,
     notes: str,
+    detection_rules: str = "",
     mode: str,
     form_action: str,
     cancel_url: str,
@@ -103,6 +104,7 @@ def _render_briefing_form(
         briefing_tlp=tlp,
         briefing_escalations=escalations,
         briefing_notes=notes,
+        briefing_detection_rules=detection_rules,
         briefing_summary=summary,
         briefing_summary_stale=summary_stale,
         page_mode=mode,
@@ -360,6 +362,7 @@ def compose():
             tlp=tlp,
             escalations="",
             notes="",
+            detection_rules="",
             mode="create",
             form_action=url_for("daily_briefing.save"),
             cancel_url=url_for("daily_briefing.triage"),
@@ -387,6 +390,7 @@ def compose():
         tlp="clear",
         escalations="",
         notes="",
+        detection_rules="",
         mode="create",
         form_action=url_for("daily_briefing.save"),
         cancel_url=url_for("daily_briefing.triage"),
@@ -404,6 +408,7 @@ def save():
         "tlp": request.form.get("tlp", "clear"),
         "escalations": request.form.get("escalations", "").strip(),
         "notes": request.form.get("notes", "").strip(),
+        "detection_rules": request.form.get("detection_rules", "").strip(),
         "summary": request.form.get("summary", "").strip(),
         # The form tracks this while the analyst works: it knows a story was
         # deleted or rewritten after the summary was drafted, which nothing on
@@ -521,6 +526,7 @@ def edit(id):
             "tlp": request.form.get("tlp", briefing.tlp),
             "escalations": request.form.get("escalations", "").strip(),
             "notes": request.form.get("notes", "").strip(),
+            "detection_rules": request.form.get("detection_rules", "").strip(),
             "summary": request.form.get("summary", "").strip(),
             "summary_stale": request.form.get("summary_stale") == "true",
             "review_state": briefing.review_state,
@@ -544,6 +550,7 @@ def edit(id):
         tlp=briefing.tlp or "clear",
         escalations=briefing.escalations or "",
         notes=briefing.notes or "",
+        detection_rules=briefing.detection_rules or "",
         summary=briefing.summary or "",
         summary_stale=briefing.summary_stale,
         mode="edit",
@@ -589,6 +596,7 @@ def add_stories(id):
         tlp=briefing.tlp or "clear",
         escalations=briefing.escalations or "",
         notes=briefing.notes or "",
+        detection_rules=briefing.detection_rules or "",
         summary=briefing.summary or "",
         # The story set is changing right here, so a summary written for the
         # earlier one no longer covers the briefing.
