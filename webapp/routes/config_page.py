@@ -241,6 +241,7 @@ def _read() -> dict:
         "SMTP_FROM": getattr(_config, "SMTP_FROM", ""),
         "FLOWINTEL_INSTANCES": getattr(_config, "FLOWINTEL_INSTANCES", []),
         "FLOWINTEL_CASE_TEMPLATE_PRODUCTS": FLOWINTEL_CASE_TEMPLATE_PRODUCTS,
+        "RULEZET_URL": getattr(_config, "RULEZET_URL", ""),
         "MISP_SERVERS": getattr(_config, "MISP_SERVERS", []),
         "IMAP_SOURCES": getattr(_config, "IMAP_SOURCES", []),
         "PRODUCT_TYPES": _config.PRODUCT_TYPES,
@@ -517,6 +518,11 @@ SMTP_FROM = {values.get('SMTP_FROM', '')!r}
 # Flowintel case management instances
 FLOWINTEL_INSTANCES = {flowintel_instances_repr}
 
+# Rulezet instance (https://github.com/CIRCL/rulezet-core) queried, by CVE ID,
+# for public detection rules to suggest while drafting a Vulnerability advisory.
+# Leave empty to disable the lookup.
+RULEZET_URL = {values.get('RULEZET_URL', '')!r}
+
 # Additional MISP servers queried by the data-collection page.
 MISP_SERVERS = {servers_repr}
 
@@ -736,6 +742,7 @@ def index():
             "SMTP_PASSWORD": _form_str("SMTP_PASSWORD"),
             "SMTP_FROM": _form_str("SMTP_FROM"),
             "FLOWINTEL_INSTANCES": getattr(_config, "FLOWINTEL_INSTANCES", []),
+            "RULEZET_URL": _form_str("RULEZET_URL"),
             "PRODUCT_TYPES": products,
             "DAILY_BRIEFING_TITLE_EXCLUSIONS": exclusions,
             "FOCUS_POINTS_GEOGRAPHIES": fp_geographies,
