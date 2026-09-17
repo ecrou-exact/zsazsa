@@ -12,7 +12,7 @@ import config
 from flask import Blueprint, jsonify, url_for
 
 from core.net_safety import is_safe_public_url
-from core.rulezet_lookup import search_rules_by_attack, search_rules_by_cve
+from core.rulezet_lookup import search_rules_by_attack, search_rules_by_cve, validate_rule
 from core.vuln_lookup import fetch_cve_info
 from webapp import audit, job_store, misp_session, misp_store
 from webapp.collection_cache import AI_SUMMARY_PREFIX, filter_events_by_org
@@ -1030,6 +1030,35 @@ def rulezet_attack_lookup():
 
     rules = search_rules_by_attack(technique_ids)
     return jsonify({"ok": True, "rules": rules})
+
+
+@bp.route("/rulezet-validate", methods=["POST"])
+@rate_limited("api_rulezet_validate", limit=20, window_s=60)
+def rulezet_validate():
+    """Proxy a dry-run rule-syntax check to Rulezet — nothing is ever saved.
+
+    POST JSON: {"format": "sigma", "content": "..."}
+    Returns: {"ok": true, "valid": bool, "errors": [...], "warnings": [...]}
+    """
+    if not getattr(config, "RULEZET_URL", ""):
+        return jsonify({"ok": False, "error": "Rulezet integration is not configured."})
+
+    body, err = _json_object()
+    if err:
+        return jsonify({"ok": False, "error": "Invalid JSON payload."}), 400
+    rule_format = (body.get("format") or "").strip()
+    content = (body.get("content") or "").strip()
+    if not rule_format:
+        return jsonify({"ok": False, "error": "No format provided."})
+    if not content:
+        return jsonify({"ok": False, "error": "No content to validate."})
+
+    result = validate_rule(rule_format, content)
+    if result is None:
+        return jsonify({"ok": False, "error": "Rulezet is unreachable."})
+    if "error" in result:
+        return jsonify({"ok": False, "error": result["error"]})
+    return jsonify({"ok": True, **result})
 
 
 @bp.route("/collection/<string:uuid>/used-in", methods=["GET"])

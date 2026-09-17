@@ -76,3 +76,36 @@ def search_rules_by_attack(technique_ids: list[str]) -> list[dict]:
     Same shape and failure handling as search_rules_by_cve.
     """
     return _search("search_rules_by_attack", "technique_ids", technique_ids) or []
+
+
+def validate_rule(rule_format: str, content: str) -> dict | None:
+    """Dry-run a rule's syntax against a Rulezet instance's public validator —
+    the same per-format check a rule goes through on creation, without ever
+    saving anything.
+
+    Returns {"valid": bool, "errors": [...], "warnings": [...]} on success,
+    {"error": "..."} for a known 4xx (bad/unknown format, empty content), or
+    None when RULEZET_URL is not configured or the instance is unreachable.
+    """
+    base_url = (getattr(_cfg, "RULEZET_URL", "") or "").rstrip("/")
+    if not base_url or not (rule_format or "").strip() or not (content or "").strip():
+        return None
+    try:
+        r = requests.post(
+            f"{base_url}/api/rule/public/validate",
+            json={"format": rule_format, "content": content},
+            timeout=15,
+            headers={"Accept": "application/json"},
+        )
+        data = r.json()
+    except Exception as exc:
+        logger.warning("Rulezet validate (%s) failed: %s", rule_format, exc)
+        return None
+
+    if r.status_code != 200:
+        return {"error": data.get("error") or f"Rulezet returned HTTP {r.status_code}"}
+    return {
+        "valid": bool(data.get("valid")),
+        "errors": data.get("errors") or [],
+        "warnings": data.get("warnings") or [],
+    }
