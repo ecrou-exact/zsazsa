@@ -12,6 +12,7 @@ import config
 from flask import Blueprint, jsonify, url_for
 
 from core.net_safety import is_safe_public_url
+from core.rulezet_lookup import search_rules_by_attack, search_rules_by_cve
 from core.vuln_lookup import fetch_cve_info
 from webapp import audit, job_store, misp_session, misp_store
 from webapp.collection_cache import AI_SUMMARY_PREFIX, filter_events_by_org
@@ -982,6 +983,53 @@ def cve_lookup():
             results.append({"cve_id": cve_id, "ok": False, "error": "Lookup failed"})
 
     return jsonify({"ok": True, "results": results})
+
+
+@bp.route("/rulezet-lookup", methods=["POST"])
+@rate_limited("api_rulezet_lookup", limit=20, window_s=60)
+def rulezet_lookup():
+    """Proxy detection-rule matches from a Rulezet instance (config.RULEZET_URL).
+
+    POST JSON: {"cve_ids": ["CVE-2024-1234", ...]}
+    Returns: {"ok": true, "rules": [{...}, ...]}
+    """
+    if not getattr(config, "RULEZET_URL", ""):
+        return jsonify({"ok": False, "error": "Rulezet integration is not configured."})
+
+    body, err = _json_object()
+    if err:
+        return jsonify({"ok": False, "error": "Invalid JSON payload."}), 400
+    raw_ids = [c.strip().upper() for c in (body.get("cve_ids") or []) if c.strip()]
+    cve_ids = [c for c in raw_ids if c.startswith("CVE-")][:10]
+    if not cve_ids:
+        return jsonify({"ok": False, "error": "No valid CVE IDs provided"})
+
+    rules = search_rules_by_cve(cve_ids)
+    return jsonify({"ok": True, "rules": rules})
+
+
+@bp.route("/rulezet-attack-lookup", methods=["POST"])
+@rate_limited("api_rulezet_attack_lookup", limit=20, window_s=60)
+def rulezet_attack_lookup():
+    """Proxy detection-rule matches from Rulezet by MITRE ATT&CK technique ID.
+
+    POST JSON: {"technique_ids": ["T1071", "T1566.001", ...]}
+    Returns: {"ok": true, "rules": [{...}, ...]}
+    """
+    if not getattr(config, "RULEZET_URL", ""):
+        return jsonify({"ok": False, "error": "Rulezet integration is not configured."})
+
+    body, err = _json_object()
+    if err:
+        return jsonify({"ok": False, "error": "Invalid JSON payload."}), 400
+    technique_ids = [
+        t.strip().upper() for t in (body.get("technique_ids") or []) if t.strip()
+    ][:20]
+    if not technique_ids:
+        return jsonify({"ok": False, "error": "No valid technique IDs provided"})
+
+    rules = search_rules_by_attack(technique_ids)
+    return jsonify({"ok": True, "rules": rules})
 
 
 @bp.route("/collection/<string:uuid>/used-in", methods=["GET"])
