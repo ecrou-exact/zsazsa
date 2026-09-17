@@ -160,13 +160,17 @@
         <form method="post" action="{{ url_for('detection_eng.set_status', id=der.uuid) }}" class="d-flex gap-2">
           <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
           <select name="status" class="form-select form-select-sm">
-            {% for s in ['Open', 'In progress', 'Blocked', 'Completed', "Won't do"] %}
+            {% for s in statuses %}
             <option value="{{ s }}" {{ 'selected' if der.status == s }}>{{ s }}</option>
             {% endfor %}
           </select>
           <button type="submit" class="btn btn-sm btn-outline-primary flex-shrink-0">Update</button>
         </form>
-        <div class="form-text mt-1">Independent of the publish workflow below — the team's own progress tracker. Marking this <strong>Completed</strong> requires the draft rule below to be filled in and passing Rulezet validation.</div>
+        <div class="form-text mt-1">
+          Independent of the publish workflow below — the team's own progress tracker, same board as the review list.
+          Also editable from the <a href="{{ url_for('detection_eng.review') }}">status board</a>. Leaving Pending requires this request to be approved first;
+          marking this <strong>Active</strong> requires the draft rule below to be filled in and passing Rulezet validation.
+        </div>
       </div>
     </div>
 
@@ -200,7 +204,7 @@
             <button type="submit" class="btn btn-sm btn-outline-secondary">Save draft rule</button>
           </div>
         </form>
-        <div class="form-text mt-2">Optional while the request is being reviewed — this is where whoever builds the detection pastes their rule once it exists. Required, and must pass Rulezet validation, before the engineering status can be set to Completed.</div>
+        <div class="form-text mt-2">Optional while the request is being reviewed — this is where whoever builds the detection pastes their rule once it exists. Required, and must pass Rulezet validation, before the engineering status can be set to Active.</div>
       </div>
     </div>
     {% elif der.draft_rule %}
@@ -415,7 +419,7 @@
   });
 })();
 
-/* ── Draft rule syntax check (informational — the server re-validates before Completed) ── */
+/* ── Draft rule syntax check (informational — the server re-validates before Active) ── */
 (function() {
   var btn = document.getElementById('btn-rulezet-validate');
   if (!btn) return;
@@ -460,7 +464,7 @@
         status.className = 'small fw-semibold mt-2 text-success';
         status.innerHTML = '<i class="fas fa-circle-check me-1"></i>Valid ' + formatEl.value.toUpperCase() + ' syntax.'
           + (data.warnings.length ? ' Warnings: ' + data.warnings.join('; ') : '')
-          + ' Save the draft rule — required before marking Completed.';
+          + ' Save the draft rule — required before marking Active.';
       } else {
         status.className = 'small fw-semibold mt-2 text-danger';
         status.innerHTML = '<i class="fas fa-circle-xmark me-1"></i>Invalid: ' + (data.errors.join('; ') || 'no details returned.');

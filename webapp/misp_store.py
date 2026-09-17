@@ -5634,9 +5634,9 @@ DER_REVIEW_REJECTED = "rejected"
 DER_REVIEW_STATES = [DER_REVIEW_DRAFT, DER_REVIEW_PENDING, DER_REVIEW_APPROVED, DER_REVIEW_REJECTED]
 
 DER_PRIORITIES = ["Low", "Medium", "High", "Critical"]
-DER_STATUSES = ["Open", "In progress", "Blocked", "Completed", "Won't do"]
-DER_STATUS_OPEN = DER_STATUSES[0]
-DER_STATUS_COMPLETED = DER_STATUSES[3]
+DER_STATUSES = ["Pending", "In Dev", "In Test", "Active", "Retired"]
+DER_STATUS_PENDING = DER_STATUSES[0]
+DER_STATUS_ACTIVE = DER_STATUSES[3]
 
 # Formats Rulezet's public /validate endpoint knows how to check.
 DER_FORMATS = ["yara", "sigma", "suricata", "zeek", "wazuh", "nse", "crs",
@@ -5656,7 +5656,7 @@ def _der_obj(data):
     _oa(obj, "format", data.get("format"))
     _oa(obj, "draft-rule", data.get("draft_rule"))
     _oa(obj, "priority", data.get("priority"))
-    _oa(obj, "status", data.get("status", DER_STATUS_OPEN))
+    _oa(obj, "status", data.get("status", DER_STATUS_PENDING))
     _oa(obj, "tlp", data.get("tlp", "amber"))
     _oa(obj, "author", data.get("author"))
     _oa(obj, "audience", data.get("audience"))
@@ -5705,7 +5705,7 @@ def _der_ns(event):
         draft_rule=g("draft-rule"),
         test_cases=g("test-cases").splitlines(),
         priority=g("priority"),
-        status=g("status") or DER_STATUS_OPEN,
+        status=g("status") or DER_STATUS_PENDING,
         tlp=g("tlp") or "amber",
         author=g("author"),
         audience=g("audience"),
@@ -5743,7 +5743,7 @@ def render_der_markdown(der, der_id=None, preview_url: str = ""):
         f"**Author:** {der.author or 'unknown'}",
         f"**Audience:** {der.audience or 'detection engineering'}",
         f"**Priority:** {der.priority or '-'}",
-        f"**Status:** {der.status or DER_STATUS_OPEN}",
+        f"**Status:** {der.status or DER_STATUS_PENDING}",
         f"**Format:** {der.format or '-'}",
         "",
         "---",
@@ -5861,7 +5861,7 @@ def create_der(data):
     der_id = _der_id_from_event_id(result.id)
     data["der_id"] = der_id
     data.setdefault("review_state", DER_REVIEW_DRAFT)
-    data.setdefault("status", DER_STATUS_OPEN)
+    data.setdefault("status", DER_STATUS_PENDING)
     data["creator"] = misp_session.current_user_email()
     if data["review_state"] == DER_REVIEW_APPROVED:
         data["approved_by"] = misp_session.current_user_email()
@@ -5894,7 +5894,7 @@ def update_der(uuid, data):
         data["approved_by"] = misp_session.current_user_email()
     else:
         data.setdefault("approved_by", _obj_attr(old, "approved-by") or "")
-    data.setdefault("status", (_obj_attr(old, "status") if old else "") or DER_STATUS_OPEN)
+    data.setdefault("status", (_obj_attr(old, "status") if old else "") or DER_STATUS_PENDING)
     if old:
         data["creator"] = _obj_attr(old, "creator") or ""
         misp.delete_object(old.id)

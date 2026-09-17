@@ -69,12 +69,8 @@
           </div>
           <div class="col-md-2">
             <label class="form-label">Status</label>
-            <select name="status" class="form-select">
-              {% for s in statuses %}
-              <option value="{{ s }}" {{ 'selected' if (der and der.status == s) or (not der and s == statuses[0]) }}>{{ s }}</option>
-              {% endfor %}
-            </select>
-            <div class="form-text">Engineering team's own progress tracker.</div>
+            <input type="text" class="form-control" value="{{ der.status if der else statuses[0] }}" disabled>
+            <div class="form-text">Engineering team's own progress tracker — change it from the status board.</div>
           </div>
         </div>
       </div>

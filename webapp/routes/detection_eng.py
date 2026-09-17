@@ -9,7 +9,7 @@ sources/expected output/test cases.
 
 import logging
 
-from flask import Blueprint, Response, flash, redirect, render_template, request, url_for
+from flask import Blueprint, Response, flash, jsonify, redirect, render_template, request, url_for
 from webapp.routes.source_event_utils import (
     flattened_references,
     lookup_source_event_meta,
@@ -48,7 +48,10 @@ def _form_data(form, der_id=""):
         "format": form.get("format", ""),
         "draft_rule": form.get("draft_rule", "").strip(),
         "priority": form.get("priority", ""),
-        "status": form.get("status", misp_store.DER_STATUS_OPEN),
+        # status is intentionally not read from the form: it only ever changes
+        # through set_status/status_update, which enforce the Pending gate and
+        # the Rulezet validation required to reach Active. See wizard_edit,
+        # which sets it explicitly from the existing request.
         "tlp": form.get("tlp", "amber"),
         "author": form.get("author", ""),
         "audience": ", ".join(form.getlist("audience")),
@@ -209,6 +212,7 @@ def detail(id):
         notify_status=notify_status,
         linked_pir=linked_pir,
         formats=misp_store.DER_FORMATS,
+        statuses=misp_store.DER_STATUSES,
         can_publish=misp_session.current_user_can_publish(),
     )
 
@@ -235,6 +239,7 @@ def wizard_edit(id):
         return "Detection engineering request not found", 404
     if request.method == "POST":
         data = _form_data(request.form, der_id=der.der_id)
+        data["status"] = der.status
         source_hints = data.get("source_event_hints") or {}
         source_events = misp_store.fetch_source_events(
             data.get("source_event_uuids") or [], source_hints=source_hints, strict_source=bool(source_hints)
@@ -340,55 +345,86 @@ def reject(id):
     return redirect(url_for("detection_eng.detail", id=id))
 
 
+def _apply_der_status(der, status):
+    """Move a request's engineering status, enforcing the same rules
+    regardless of caller (detail page dropdown or kanban drag-and-drop).
+
+    Pending is the untriaged state: a request only leaves it once the
+    request itself has been approved, mirroring how a PIR only leaves
+    Pending after intake triage. Moving into Active additionally requires a
+    draft rule that currently passes Rulezet validation, so nothing can be
+    signed off as delivered with a rule that does not parse.
+
+    Returns None on success, or an error message.
+    """
+    if status not in misp_store.DER_STATUSES:
+        return "Invalid status."
+    if der.status == misp_store.DER_STATUS_PENDING and status != misp_store.DER_STATUS_PENDING \
+            and der.review_state != misp_store.DER_REVIEW_APPROVED:
+        return "Approve this request before tracking its engineering status."
+    if status == misp_store.DER_STATUS_PENDING and der.status != misp_store.DER_STATUS_PENDING:
+        return "A request cannot be moved back to Pending."
+    if status == misp_store.DER_STATUS_ACTIVE:
+        if not (der.format or "").strip() or not (der.draft_rule or "").strip():
+            return "A draft rule (with its format) is required, and must pass Rulezet validation, before marking this Active."
+        result = validate_rule(der.format, der.draft_rule)
+        if result is None:
+            return "Could not reach Rulezet to validate the draft rule. This request cannot be marked Active until it can be validated."
+        if "error" in result:
+            return f"Rulezet could not validate the draft rule: {result['error']}"
+        if not result.get("valid"):
+            return "Draft rule failed Rulezet validation: " + "; ".join(result.get("errors") or ["no details returned."])
+
+    misp_store.update_der(der.uuid, {
+        "der_id": der.der_id, "title": der.title, "technique": der.technique,
+        "log_sources": der.log_sources, "hypothesis": der.hypothesis,
+        "expected_output": der.expected_output, "existing_coverage": der.existing_coverage,
+        "test_cases": der.test_cases, "format": der.format, "draft_rule": der.draft_rule,
+        "priority": der.priority, "status": status,
+        "tlp": der.tlp, "author": der.author, "audience": der.audience,
+        "source_event_uuids": list(getattr(der, "source_event_uuids", []) or []),
+        "source_event_hints": dict(getattr(der, "source_event_hints", {}) or {}),
+        "source_event_uuid": der.source_event_uuid,
+        "linked_pir_uuid": der.linked_pir_uuid,
+        "review_state": der.review_state,
+        "rejection_reason": der.rejection_reason,
+    })
+    audit.record("update", "detection_eng", entity_id=der.uuid, entity_label=f"{der.der_id} status={status}")
+    if status == misp_store.DER_STATUS_ACTIVE and der.review_state == misp_store.DER_REVIEW_APPROVED:
+        _start_der_delivery(der.der_id, der.uuid, "completed")
+    return None
+
+
 @bp.route("/<string:id>/status", methods=["POST"])
 def set_status(id):
     """Update the engineering team's own progress tracker, independent of the
     publish workflow above (a request stays 'approved' while its status moves
-    Open -> In progress -> Completed)."""
+    Pending -> In Dev -> In Test -> Active -> Retired)."""
     der = misp_store.get_der(id)
     if der is None:
         return "Detection engineering request not found", 404
     status = request.form.get("status", "").strip()
-    if status not in misp_store.DER_STATUSES:
-        flash("Invalid status.", "warning")
+    error = _apply_der_status(der, status)
+    if error:
+        flash(error, "warning")
         return redirect(url_for("detection_eng.detail", id=id))
-    if status == misp_store.DER_STATUS_COMPLETED:
-        if not (der.format or "").strip() or not (der.draft_rule or "").strip():
-            flash("A draft rule (with its format) is required, and must pass Rulezet validation, before marking this Completed.", "warning")
-            return redirect(url_for("detection_eng.detail", id=id))
-        result = validate_rule(der.format, der.draft_rule)
-        if result is None:
-            flash("Could not reach Rulezet to validate the draft rule. This request cannot be marked Completed until it can be validated.", "warning")
-            return redirect(url_for("detection_eng.detail", id=id))
-        if "error" in result:
-            flash(f"Rulezet could not validate the draft rule: {result['error']}", "warning")
-            return redirect(url_for("detection_eng.detail", id=id))
-        if not result.get("valid"):
-            flash("Draft rule failed Rulezet validation: " + "; ".join(result.get("errors") or ["no details returned."]), "warning")
-            return redirect(url_for("detection_eng.detail", id=id))
-    try:
-        misp_store.update_der(id, {
-            "der_id": der.der_id, "title": der.title, "technique": der.technique,
-            "log_sources": der.log_sources, "hypothesis": der.hypothesis,
-            "expected_output": der.expected_output, "existing_coverage": der.existing_coverage,
-            "test_cases": der.test_cases, "format": der.format, "draft_rule": der.draft_rule,
-            "priority": der.priority, "status": status,
-            "tlp": der.tlp, "author": der.author, "audience": der.audience,
-            "source_event_uuids": list(getattr(der, "source_event_uuids", []) or []),
-            "source_event_hints": dict(getattr(der, "source_event_hints", {}) or {}),
-            "source_event_uuid": der.source_event_uuid,
-            "linked_pir_uuid": der.linked_pir_uuid,
-            "review_state": der.review_state,
-            "rejection_reason": der.rejection_reason,
-        })
-        audit.record("update", "detection_eng", entity_id=id, entity_label=f"{der.der_id} status={status}")
-        flash(f"{der.der_id} status set to {status}.", "success")
-        if status == misp_store.DER_STATUS_COMPLETED and der.review_state == misp_store.DER_REVIEW_APPROVED:
-            _start_der_delivery(der.der_id, id, "completed")
-            flash("Completion notifications are being sent in the background; the job badge reports the result.", "info")
-    except Exception as exc:
-        flash(f"Could not update status: {exc}", "warning")
+    flash(f"{der.der_id} status set to {status}.", "success")
+    if status == misp_store.DER_STATUS_ACTIVE and der.review_state == misp_store.DER_REVIEW_APPROVED:
+        flash("Completion notifications are being sent in the background; the job badge reports the result.", "info")
     return redirect(url_for("detection_eng.detail", id=id))
+
+
+@bp.route("/<string:id>/status-update", methods=["POST"])
+def status_update(id):
+    """JSON status update for the kanban board's drag-and-drop."""
+    der = misp_store.get_der(id)
+    if der is None:
+        return jsonify({"error": "Detection engineering request not found"}), 404
+    status = request.form.get("status", "").strip()
+    error = _apply_der_status(der, status)
+    if error:
+        return jsonify({"error": error}), 400
+    return jsonify({"ok": True, "status": status})
 
 
 @bp.route("/<string:id>/delete", methods=["POST"])
