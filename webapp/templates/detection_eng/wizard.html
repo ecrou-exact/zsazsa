@@ -211,10 +211,16 @@
       <button type="submit" name="action" value="save" class="btn btn-outline-secondary" id="btn-der-save">
         <i class="fas fa-floppy-disk me-1"></i> Save draft
       </button>
-      {% if is_edit %}
+      {% if is_edit and can_publish %}
       <button type="submit" name="action" value="publish" class="btn btn-success" id="btn-der-publish">
         <i class="fas fa-check-circle me-1"></i> Publish &amp; notify
       </button>
+      {% elif is_edit %}
+      <span class="d-block" style="cursor:not-allowed;" title="Only users with MISP publish rights can approve and publish.">
+        <button type="button" class="btn btn-success w-100" disabled style="pointer-events:none;">
+          <i class="fas fa-check-circle me-1"></i> Publish &amp; notify
+        </button>
+      </span>
       {% endif %}
       <a href="{{ url_for('detection_eng.review') }}" class="btn btn-outline-secondary">Cancel</a>
     </div>

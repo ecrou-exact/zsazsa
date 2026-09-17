@@ -108,6 +108,7 @@ def _wizard_context(fia=None, source_events=None):
         "action_presets_near_term": getattr(_cfg, "RECOMMENDED_ACTIONS_NEAR_TERM", []),
         "pirs": misp_store.list_selectable_pirs(_linked_pir(fia)),
         "source_event_tags": sorted({t for ev in (source_events or []) for t in ev.get("tags", [])}),
+        "can_publish": misp_session.current_user_can_publish(),
     }
 
 
@@ -289,6 +290,9 @@ def wizard_edit(id):
             data.get("source_event_uuids") or [], source_hints, strict_source=bool(source_hints)
         )
         action = request.form.get("action", "save")
+        if action == "publish" and not misp_session.current_user_can_publish():
+            flash("Only users with MISP publish rights can approve and publish.", "warning")
+            action = "save"
         if action == "submit":
             data["review_state"] = misp_store.FIA_REVIEW_PENDING
         elif action == "publish":
