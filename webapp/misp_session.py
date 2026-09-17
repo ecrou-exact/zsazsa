@@ -272,6 +272,28 @@ def current_user_email():
     return user["email"] if user else DEFAULT_USER_EMAIL
 
 
+def current_user_can_publish():
+    """Whether the current user may approve/publish a CTI product (the "senior
+    reviewer" gate on top of the draft -> pending-review -> approved workflow).
+
+    Reuses MISP's own ``perm_publish`` role permission rather than inventing a
+    zsazsa-specific role: zsazsa has no user/role management of its own, and
+    this is the closest existing analog to "trusted to make something public".
+
+    Falls back to allowed when no MISP session is available at all (single
+    sign-on disabled, or a standalone script) since the whole app already runs
+    under one trusted identity in that mode; the gate only bites once a real,
+    per-user MISP session is in play.
+    """
+    try:
+        user = getattr(g, "misp_user", None)
+    except RuntimeError:
+        return True
+    if user is None:
+        return True
+    return bool((user.get("Role") or {}).get("perm_publish"))
+
+
 def diagnose(cookies) -> dict:
     """Check single sign-on against the cookies of a real request.
 

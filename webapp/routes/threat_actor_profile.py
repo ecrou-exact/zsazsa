@@ -231,7 +231,8 @@ def detail(id):
     linked_feeds = _linked_feeds(tap)
     return render_template("threat_actor_profile/detail.html",
                            tap=tap, recipients=recipients, pir=pir, feedback=feedback,
-                           linked_feeds=linked_feeds)
+                           linked_feeds=linked_feeds,
+                           can_publish=misp_session.current_user_can_publish())
 
 
 @bp.route("/<string:id>/edit", methods=["GET", "POST"])
@@ -268,6 +269,9 @@ def publish(id):
     tap = misp_store.get_threat_actor_profile(id)
     if tap is None:
         return "Threat actor profile not found", 404
+    if not misp_session.current_user_can_publish():
+        flash("Only users with MISP publish rights can publish.", "warning")
+        return redirect(url_for("threat_actor_profile.detail", id=id))
     try:
         misp_store.publish_threat_actor_profile(id)
         audit.record("update", "threat-actor-profile", entity_id=id, entity_label=tap.tap_id, details="published")

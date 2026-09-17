@@ -258,6 +258,7 @@ def detail(id):
         recipients=recipients,
         notify_status=notify_status,
         reference_items=flattened_references(list(fia.external_references or []), source_refs),
+        can_publish=misp_session.current_user_can_publish(),
     )
 
 
@@ -326,6 +327,9 @@ def approve(id):
         return "FIA not found", 404
     if not (fia.audience or "").strip():
         flash("A target audience is required before publishing. Edit the alert and select an audience first.", "warning")
+        return redirect(url_for("flash_intel.detail", id=id))
+    if not misp_session.current_user_can_publish():
+        flash("Only users with MISP publish rights can approve and publish.", "warning")
         return redirect(url_for("flash_intel.detail", id=id))
     try:
         misp_store.publish_fia(id)

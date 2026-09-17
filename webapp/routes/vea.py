@@ -232,6 +232,7 @@ def detail(id):
         recipients=recipients,
         notify_status=notify_status,
         linked_pir=linked_pir,
+        can_publish=misp_session.current_user_can_publish(),
     )
 
 
@@ -388,6 +389,9 @@ def approve(id):
         return "VEA not found", 404
     if not (vea.audience or "").strip():
         flash("A target audience is required before publishing. Edit the advisory and select an audience first.", "warning")
+        return redirect(url_for("vea.detail", id=id))
+    if not misp_session.current_user_can_publish():
+        flash("Only users with MISP publish rights can approve and publish.", "warning")
         return redirect(url_for("vea.detail", id=id))
     try:
         misp_store.publish_vea(id)

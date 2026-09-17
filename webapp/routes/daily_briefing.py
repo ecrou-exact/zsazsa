@@ -466,6 +466,7 @@ def detail(id):
         source_meta=source_meta,
         scope_summary=misp_store.briefing_combined_scope_summary(briefing),
         misp_webapp_url=config.MISP_WEBAPP_URL.rstrip("/"),
+        can_publish=misp_session.current_user_can_publish(),
     )
 
 
@@ -626,6 +627,9 @@ def publish(id):
     briefing = misp_store.get_briefing(id)
     if briefing is None:
         return "Briefing not found", 404
+    if not misp_session.current_user_can_publish():
+        flash("Only users with MISP publish rights can publish.", "warning")
+        return redirect(url_for("daily_briefing.detail", id=id))
     try:
         misp_store.publish_briefing(id)
         audit.record("publish", "daily-briefing", entity_id=id,
