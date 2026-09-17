@@ -362,18 +362,33 @@
     </div>
 
     <div class="card content-card mb-4">
-      <div class="card-header"><i class="fas fa-radar me-2"></i>Detection guidance</div>
+      <div class="card-header"><i class="fas fa-crosshairs me-2"></i>Detection guidance</div>
       <div class="card-body">
         <div class="row g-3">
           <div class="col-md-6">
-            <label class="form-label">Exploitation indicators</label>
-            <textarea name="exploitation_indicators" id="exploitation_indicators" class="form-control" rows="4"
+            <div class="d-flex justify-content-between align-items-center" style="min-height:2.1rem;">
+              <label class="form-label mb-0">Exploitation indicators</label>
+            </div>
+            <textarea name="exploitation_indicators" id="exploitation_indicators" class="form-control mt-1" rows="4"
                       placeholder="[Log source]: what to look for">{{ lines(vea.exploitation_indicators) if vea else '' }}</textarea>
           </div>
           <div class="col-md-6">
-            <label class="form-label">Detection rules</label>
-            <textarea name="detection_rules" class="form-control" rows="4"
+            <div class="d-flex justify-content-between align-items-center" style="min-height:2.1rem;">
+              <label class="form-label mb-0">Detection rules</label>
+              {# A disabled <button> is inert in every browser: it never fires the
+                 hover events a native title tooltip needs. The title lives on this
+                 wrapping span instead, which stays interactive either way. #}
+              <span id="btn-rulezet-lookup-wrap" title="Enter a CVE ID above first.">
+                <button type="button" class="btn btn-sm btn-outline-primary" id="btn-rulezet-lookup" disabled>
+                  <img src="{{ url_for('static', filename='rulezet-icon.png') }}"
+                       alt="" style="height:22px;vertical-align:middle;margin-right:6px;">
+                  Search Rulezet
+                </button>
+              </span>
+            </div>
+            <textarea name="detection_rules" id="detection_rules" class="form-control mt-1" rows="4"
                       placeholder="Sigma/EDR rule reference">{{ lines(vea.detection_rules) if vea else '' }}</textarea>
+            <div id="rulezet-status" class="small text-danger fw-semibold mt-1" style="display:none;"></div>
           </div>
         </div>
       </div>
@@ -934,6 +949,52 @@ function _renderCvssBadge(cvssVal) {
       btn.disabled = false;
       btn.innerHTML = origHTML;
     });
+  });
+})();
+
+/* ── Detection rule lookup (Rulezet, by CVE ID) ── */
+(function() {
+  var btn = document.getElementById('btn-rulezet-lookup');
+  var btnWrap = document.getElementById('btn-rulezet-lookup-wrap');
+  var status = document.getElementById('rulezet-status');
+  var rulesEl = document.getElementById('detection_rules');
+  var cveIdEl = document.getElementById('cve_id');
+  var csrfToken = (document.querySelector('meta[name="csrf-token"]') || {}).content || '';
+
+  if (!btn) return;
+
+  function getCveIds() {
+    var raw = (cveIdEl.value || '').trim();
+    return raw.split(/[\n,]+/).map(s => s.trim().toUpperCase()).filter(s => s.startsWith('CVE-'));
+  }
+
+  function refreshButtonState() {
+    var hasCve = getCveIds().length > 0;
+    btn.disabled = !hasCve;
+    btnWrap.title = hasCve
+      ? 'Search Rulezet for public rules matching the CVE ID(s) above'
+      : 'Enter a CVE ID above first.';
+  }
+
+  cveIdEl.addEventListener('input', refreshButtonState);
+  refreshButtonState();
+
+  btn.addEventListener('click', function() {
+    var cveIds = getCveIds();
+    status.style.display = 'none';
+    if (!cveIds.length) {
+      status.innerHTML = '<i class="fas fa-triangle-exclamation me-1"></i>Enter at least one CVE ID first.';
+      status.style.display = '';
+      return;
+    }
+
+    var resultPromise = fetch(SCRIPT_ROOT + '/api/rulezet-lookup', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json', 'X-CSRF-Token': csrfToken},
+      body: JSON.stringify({cve_ids: cveIds}),
+    }).then(zsazsaReadJson);
+
+    zsazsaRulezetSearch(resultPromise, rulesEl, cveIds.join(', '), 'cve');
   });
 })();
 
