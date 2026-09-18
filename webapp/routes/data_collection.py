@@ -346,12 +346,15 @@ def _fetch_event_timed(misp, uuid, timeout):
             reports = []
         return event, reports
 
-    with concurrent.futures.ThreadPoolExecutor(max_workers=1) as pool:
-        future = pool.submit(_work)
-        try:
-            return future.result(timeout=timeout)
-        except concurrent.futures.TimeoutError:
-            raise TimeoutError(f"MISP did not respond within {timeout}s")
+    pool = concurrent.futures.ThreadPoolExecutor(max_workers=1)
+    try:
+        return pool.submit(_work).result(timeout=timeout)
+    except TimeoutError as exc:
+        raise TimeoutError(f"MISP did not respond within {timeout}s") from exc
+    finally:
+        # As a context manager the pool waits for the stalled worker on the way
+        # out, which would undo the timeout.
+        pool.shutdown(wait=False)
 
 
 @bp.route("/pull", methods=["POST"])
