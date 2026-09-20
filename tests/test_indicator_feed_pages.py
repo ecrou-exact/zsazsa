@@ -286,13 +286,16 @@ class RenderedPages(unittest.TestCase):
     def setUp(self):
         # These assert on the rendered markup, so they need the real app: the
         # pages extend base.html, which only create_app fills in. The database,
-        # the log and the cache worker are pointed somewhere harmless.
+        # the log and the cache worker are pointed somewhere harmless, and the
+        # login redirect is off, or a developer who runs single sign-on gets a
+        # 302 here instead of a page.
         tmp = tempfile.TemporaryDirectory()
         self.addCleanup(tmp.cleanup)
         patches = [
             mock.patch.object(config, "DB_FILE", str(Path(tmp.name) / "test.db"), create=True),
             mock.patch.object(config, "LOG_FILE", str(Path(tmp.name) / "test.log"), create=True),
             mock.patch.object(collection_cache, "start_worker"),
+            mock.patch.object(config, "MISP_SESSION_REDIRECT_TO_LOGIN", False),
             mock.patch.object(misp_store, "list_indicator_feeds", return_value=[]),
             mock.patch.object(misp_store, "search_indicators", return_value=_ROWS),
             mock.patch.object(misp_store, "list_pirs", return_value=[]),

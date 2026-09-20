@@ -30,6 +30,13 @@ keep the names and tags they got. Deleting their event in MISP changes nothing.
 - Pulling an event from a MISP server that had stopped answering held the page
   for as long as that server took, rather than the ten seconds the timeout
   promises. The thread pool was waiting for the stalled call on its way out.
+- Single sign-on set up against the wrong Redis database was reported as
+  "nothing is writing PHP sessions to this Redis". PHP takes the session database from
+  `session.save_path` and MISP's installers leave that at 0, while MISP's own
+  `redis_database` is 13 and easy to copy across. **Test single sign-on** now
+  looks in the other databases of the same Redis and, when it finds the
+  sessions there, names that database and the setting to change. The log says
+  the same.
 
 ### Added
 

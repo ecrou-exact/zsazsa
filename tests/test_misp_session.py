@@ -101,9 +101,10 @@ def _reachable_redis():
 
 
 class Diagnosis(unittest.TestCase):
-    """The two setups that break single sign-on, MISP naming its cookie something
-    other than MISP-<uuid> and PHP not keeping sessions in Redis, are
-    indistinguishable from the outside. The check has to tell them apart."""
+    """The setups that break single sign-on, MISP naming its cookie something
+    other than MISP-<uuid>, PHP not keeping sessions in Redis, and PHP keeping
+    them in another database of it, are indistinguishable from the outside. The
+    check has to tell them apart."""
 
     def setUp(self):
         patcher = mock.patch.object(misp_session, "_session_cookie_name",
@@ -120,7 +121,8 @@ class Diagnosis(unittest.TestCase):
         """
         with mock.patch.object(misp_session, "_redis_connect", _reachable_redis), \
              mock.patch.object(misp_session, "_redis_get", redis), \
-             mock.patch.object(misp_session.config, "MISP_SESSION_COOKIE_NAME", ""):
+             mock.patch.object(misp_session.config, "MISP_SESSION_COOKIE_NAME", ""), \
+             mock.patch.object(misp_session.config, "MISP_SESSION_REDIS_DB", 13):
             return misp_session.diagnose(cookies)
 
     def failed(self, result):
@@ -136,15 +138,25 @@ class Diagnosis(unittest.TestCase):
         self.assertIn("MISP_SESSION_COOKIE_NAME", result["hint"])
 
     def test_nothing_writing_sessions_points_at_the_php_setting(self):
-        with mock.patch.object(misp_session, "_holds_php_sessions", return_value=False):
+        with mock.patch.object(misp_session, "_database_with_sessions", return_value=None):
             result = self.diagnose({"MISP-abc": "sid"}, redis=mock.Mock(return_value=None))
         self.assertEqual(self.failed(result), ["MISP session"])
         self.assertIn("session.save_handler", result["hint"])
 
+    def test_sessions_in_another_database_name_it_and_the_setting_to_change(self):
+        """Copying MISP's own redis_database across reads as "nothing writes
+        sessions here", which sends the admin back to a php.ini that was right."""
+        with mock.patch.object(misp_session, "_database_with_sessions", return_value=0):
+            result = self.diagnose({"MISP-abc": "sid"}, redis=mock.Mock(return_value=None))
+        self.assertEqual(self.failed(result), ["MISP session"])
+        self.assertIn("database 0", self.detail(result, "MISP session"))
+        self.assertIn("MISP_SESSION_REDIS_DB to 0", result["hint"])
+        self.assertNotIn("session.save_handler", result["hint"])
+
     def test_other_sessions_present_means_this_one_expired_not_misconfigured(self):
         """PHP writing sessions here and this cookie having none behind it look the
         same from one failed lookup, and want opposite fixes."""
-        with mock.patch.object(misp_session, "_holds_php_sessions", return_value=True):
+        with mock.patch.object(misp_session, "_database_with_sessions", return_value=13):
             result = self.diagnose({"MISP-abc": "sid"}, redis=mock.Mock(return_value=None))
         self.assertEqual(self.failed(result), ["MISP session"])
         self.assertIn("does hold PHP sessions", self.detail(result, "MISP session"))
@@ -171,10 +183,39 @@ class Diagnosis(unittest.TestCase):
     def test_the_session_id_is_never_reported_back(self):
         """The cookie value is a live session. Naming it on a settings page would
         hand it to anyone who can read the response."""
-        with mock.patch.object(misp_session, "_holds_php_sessions", return_value=True):
+        with mock.patch.object(misp_session, "_database_with_sessions", return_value=13):
             result = self.diagnose({"MISP-abc": "s3cr3t-session-id"},
                                    redis=mock.Mock(return_value=None))
         self.assertNotIn("s3cr3t-session-id", repr(result))
+
+
+class PopulatedDatabases(unittest.TestCase):
+    """Reading INFO keyspace, which is how the check finds the database PHP is
+    really writing its sessions to."""
+
+    def _databases(self, **read):
+        """_populated_databases against an INFO that returns, or one that raises."""
+        with mock.patch.object(misp_session, "_send_command"), \
+             mock.patch.object(misp_session, "_read_reply", **read), \
+             mock.patch.object(misp_session.config, "MISP_SESSION_REDIS_DB", 13):
+            return misp_session._populated_databases(mock.Mock())
+
+    def test_the_configured_database_is_left_out_of_the_ones_to_look_in(self):
+        reply = (b"# Keyspace\r\n"
+                 b"db0:keys=5,expires=5,avg_ttl=0\r\n"
+                 b"db13:keys=812,expires=40,avg_ttl=0\r\n")
+        self.assertEqual(self._databases(return_value=reply), [0])
+
+    def test_an_acl_that_refuses_info_leaves_the_rest_of_the_check_standing(self):
+        self.assertEqual(
+            self._databases(side_effect=misp_session.RedisError("NOPERM")), [])
+
+    def test_a_redis_that_cannot_be_reached_reads_as_not_knowing(self):
+        """Both callers are explaining a failure already, so an unreachable Redis
+        and a Redis with no sessions in it lead to the same sentence."""
+        with mock.patch.object(misp_session, "_redis_connect",
+                               side_effect=OSError("connection refused")):
+            self.assertIsNone(misp_session._database_with_sessions())
 
 
 class MissLogging(unittest.TestCase):
@@ -197,6 +238,33 @@ class MissLogging(unittest.TestCase):
         output = self.load("CAKEPHP=abc")
         self.assertEqual(len(output), 1, "warned on every request instead of once")
         self.assertIn("CAKEPHP", output[0])
+
+    def test_sessions_in_another_database_are_named_in_the_log(self):
+        """With the redirect on, a miss keeps the operator out of the settings page,
+        so the log is the only place left that can name the database to point at."""
+        with mock.patch.object(misp_session, "_database_with_sessions", return_value=0), \
+             mock.patch.object(misp_session.config, "MISP_SESSION_REDIS_DB", 13):
+            output = self.load("MISP-abc=sid")
+        self.assertEqual(len(output), 1)
+        self.assertIn("database 0", output[0])
+        self.assertIn("MISP_SESSION_REDIS_DB to 0", output[0])
+
+    def test_where_the_sessions_are_is_looked_up_once_and_not_per_request(self):
+        """The lookup scans Redis and this runs in front of every request, so it
+        belongs behind the same guard as the line it is written for."""
+        finder = mock.Mock(return_value=0)
+        with mock.patch.object(misp_session, "_database_with_sessions", finder), \
+             mock.patch.object(misp_session.config, "MISP_SESSION_REDIS_DB", 13):
+            self.load("MISP-abc=sid")
+        self.assertEqual(finder.call_count, 1, "scanned Redis on every request")
+
+    def test_an_unreachable_redis_is_not_reported_as_an_empty_one(self):
+        """The lookup answers None both when it searched and found nothing and when
+        it could not search at all, so the sentence must not claim the first."""
+        with mock.patch.object(misp_session, "_database_with_sessions", return_value=None):
+            output = self.load("MISP-abc=sid")
+        self.assertNotIn("no PHP sessions at all", output[0])
+        self.assertIn("session.save_handler", output[0])
 
     def test_nothing_is_logged_when_single_sign_on_is_off(self):
         app = Flask(__name__)

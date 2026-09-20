@@ -13,6 +13,7 @@ format to pull out ``Auth.User``.
 """
 
 import logging
+import re
 import socket
 import time
 from contextlib import contextmanager
@@ -31,12 +32,17 @@ DEFAULT_USER_EMAIL = "admin@admin.test"
 _SESSION_KEY_PREFIX = "PHPREDIS_SESSION:"
 
 
+def _configured_db():
+    """The database index zsazsa is told MISP's sessions are in."""
+    return getattr(config, "MISP_SESSION_REDIS_DB", 0) or 0
+
+
 @contextmanager
 def _redis_connect():
     """An authenticated socket on MISP's session Redis, on the configured database."""
     host = getattr(config, "MISP_SESSION_REDIS_HOST", "127.0.0.1")
     port = getattr(config, "MISP_SESSION_REDIS_PORT", 6379)
-    db = getattr(config, "MISP_SESSION_REDIS_DB", 0)
+    db = _configured_db()
     username = getattr(config, "MISP_SESSION_REDIS_USERNAME", "")
     password = getattr(config, "MISP_SESSION_REDIS_PASSWORD", "")
 
@@ -63,24 +69,66 @@ def _redis_get(key):
         return _read_reply(sock)
 
 
-def _holds_php_sessions():
-    """Whether anything is writing PHP sessions to this Redis at all.
+def _scan_for_sessions(sock):
+    """Whether the database this socket is on holds any PHP session key.
 
     Only key names are read, never values: the value under a session key is the
     session. The scan stops at the first hit and gives up after a few batches, so
     a busy Redis cannot stall the page that asks.
     """
-    with _redis_connect() as sock:
-        cursor = "0"
-        for _ in range(10):
-            _send_command(sock, "SCAN", cursor, "MATCH", f"{_SESSION_KEY_PREFIX}*", "COUNT", "200")
-            cursor, keys = _read_reply(sock)
-            if keys:
-                return True
-            cursor = cursor.decode()
-            if cursor == "0":
-                return False
+    cursor = "0"
+    for _ in range(10):
+        _send_command(sock, "SCAN", cursor, "MATCH", f"{_SESSION_KEY_PREFIX}*", "COUNT", "200")
+        cursor, keys = _read_reply(sock)
+        if keys:
+            return True
+        cursor = cursor.decode()
+        if cursor == "0":
+            break
     return False
+
+
+def _populated_databases(sock):
+    """Database indexes on this Redis that hold keys, the configured one aside.
+
+    INFO keyspace lists only the non-empty ones, so this is one command rather
+    than a sweep of all sixteen. An instance whose ACL refuses INFO answers
+    with an error, and the caller manages without.
+    """
+    try:
+        _send_command(sock, "INFO", "keyspace")
+        reply = _read_reply(sock) or b""
+    except RedisError:
+        return []
+    indexes = (int(n) for n in re.findall(rb"^db(\d+):", reply, re.MULTILINE))
+    return [db for db in indexes if db != _configured_db()]
+
+
+def _database_with_sessions():
+    """Which database on MISP's session Redis holds PHP sessions.
+
+    None when none of them does, and equally when the Redis could not be
+    asked: both callers are already explaining a failure and have nothing more
+    to say in either case.
+
+    The configured database is tried first and is normally the answer. The
+    rest are for the install that took MISP's own redis_database, 13 by
+    default, to be the session database: PHP puts sessions where
+    session.save_path names, which is database 0 in everything MISP's
+    installers set up, so zsazsa reads an empty one and cannot say why.
+    """
+    try:
+        with _redis_connect() as sock:
+            if _scan_for_sessions(sock):
+                return _configured_db()
+            for db in _populated_databases(sock):
+                _send_command(sock, "SELECT", db)
+                _read_reply(sock)
+                if _scan_for_sessions(sock):
+                    return db
+    except (OSError, RedisError) as e:
+        logger.debug("could not work out which database holds MISP's sessions: %s", e)
+    return None
 
 
 def _parse_php_value(data, pos):
@@ -220,25 +268,45 @@ def _session_cookie_name():
     return _cookie_name_cache["value"]
 
 
-def _explain_miss(cookie_name, session_id):
-    """Why this request could not be identified, as a sentence for the operator.
-
-    Both of the setups that break single sign-on, MISP naming its cookie
-    something other than MISP-<uuid> and PHP not keeping its sessions in Redis,
-    look identical from here: no user. Saying which one it was is the difference
-    between a five-minute fix and reading the source.
-    """
+def _miss_cause(cookie_name, session_id):
+    """Which of the three ways single sign-on missed this request."""
     if not cookie_name:
-        return "no-cookie-name", ("could not determine MISP's session cookie name; MISP may be "
-                                  "unreachable, or set MISP_SESSION_COOKIE_NAME by hand")
+        return "no-cookie-name"
     if not session_id:
+        return "no-cookie"
+    return "no-session"
+
+
+def _explain_miss(cause, cookie_name):
+    """Why the request could not be identified, as a sentence for the operator.
+
+    The setups that break single sign-on look identical from here: no user.
+    Saying which one it was is the difference between a five-minute fix and
+    reading the source, and the log is the only place that can say it once the
+    redirect is on, since that keeps the operator out of the settings page.
+
+    Called only when the line is about to be written, because working out where
+    the sessions really are costs a scan of the Redis.
+    """
+    if cause == "no-cookie-name":
+        return ("could not determine MISP's session cookie name; MISP may be unreachable, or "
+                "set MISP_SESSION_COOKIE_NAME by hand")
+    if cause == "no-cookie":
         seen = ", ".join(sorted(request.cookies)[:10]) or "none"
-        return "no-cookie", (f"the browser sent no {cookie_name} cookie (cookies seen: {seen}); "
-                             f"if MISP names its cookie differently, set MISP_SESSION_COOKIE_NAME "
-                             f"to that name")
-    return "no-session", (f"no session for the {cookie_name} cookie in Redis; check that PHP "
-                          f"stores MISP's sessions there (session.save_handler = redis) and that "
-                          f"the Redis settings below point at the same instance")
+        return (f"the browser sent no {cookie_name} cookie (cookies seen: {seen}); if MISP names "
+                f"its cookie differently, set MISP_SESSION_COOKIE_NAME to that name")
+
+    holding = _database_with_sessions()
+    if holding == _configured_db():
+        return (f"no session behind the {cookie_name} cookie, though MISP's session Redis does "
+                f"hold PHP sessions; the cookie is most likely one that has expired")
+    if holding is not None:
+        return (f"no session behind the {cookie_name} cookie in database {_configured_db()} of "
+                f"MISP's session Redis, but database {holding} of it does hold PHP sessions; set "
+                f"MISP_SESSION_REDIS_DB to {holding}")
+    return (f"no session behind the {cookie_name} cookie in MISP's session Redis; check that PHP "
+            f"stores MISP's sessions there (session.save_handler = redis) and that "
+            f"MISP_SESSION_REDIS_* names the same instance and database")
 
 
 def load_request_user():
@@ -253,10 +321,11 @@ def load_request_user():
     # the cookies the caller sent and would otherwise let anyone grow this set and
     # the log by varying them.
     if g.misp_user is None and getattr(config, "MISP_SESSION_REDIRECT_TO_LOGIN", False):
-        cause, reason = _explain_miss(cookie_name, session_id)
+        cause = _miss_cause(cookie_name, session_id)
         if cause not in _warned_misses:
             _warned_misses.add(cause)
-            logger.warning("single sign-on could not identify the request: %s", reason)
+            logger.warning("single sign-on could not identify the request: %s",
+                           _explain_miss(cause, cookie_name))
 
 
 def current_user_email():
@@ -302,31 +371,32 @@ def diagnose(cookies) -> dict:
     try:
         with _redis_connect():
             pass
-        checks.append({"label": "Session Redis", "ok": True, "detail": "reachable"})
+        checks.append({"label": "Session Redis", "ok": True,
+                       "detail": f"reachable, database {_configured_db()}"})
         redis_ok = True
     except (OSError, RedisError) as e:
         checks.append({"label": "Session Redis", "ok": False, "detail": str(e)})
         redis_ok = False
 
     user = get_misp_user(session_id) if session_id and redis_ok else None
-    populated = False
+    holding = None
     if session_id and redis_ok:
-        if user is None:
-            # Whether anyone's session is here separates "PHP writes elsewhere"
-            # from "PHP writes here and yours has simply gone", which look the
-            # same from a single failed lookup and want opposite fixes. A scan
-            # that times out just leaves the more general advice standing.
-            try:
-                populated = _holds_php_sessions()
-            except (OSError, RedisError):
-                populated = False
-        checks.append({
-            "label": "MISP session",
-            "ok": user is not None,
-            "detail": (f"identified {user.get('email', '?')}" if user
-                       else "not found, though this Redis does hold PHP sessions" if populated
-                       else "not found, and this Redis holds no PHP sessions at all"),
-        })
+        if user:
+            detail = f"identified {user.get('email', '?')}"
+        else:
+            # Where the sessions are separates the three setups that all look
+            # like "no user" from here and want different fixes: PHP writing
+            # them elsewhere, PHP writing them to another database of this same
+            # Redis, and this one cookie having no session left behind it.
+            holding = _database_with_sessions()
+            if holding == _configured_db():
+                detail = "not found, though this Redis does hold PHP sessions"
+            elif holding is not None:
+                detail = (f"not found in database {_configured_db()}, but database {holding} "
+                          f"of this Redis does hold PHP sessions")
+            else:
+                detail = "not found, and this Redis holds no PHP sessions at all"
+        checks.append({"label": "MISP session", "ok": user is not None, "detail": detail})
 
     hint = ""
     if not user:
@@ -337,10 +407,15 @@ def diagnose(cookies) -> dict:
                     "above is MISP's session cookie, set MISP_SESSION_COOKIE_NAME to that name.")
         elif label == "Session Redis":
             hint = "Check the Redis settings below against the instance MISP writes its sessions to."
-        elif label == "MISP session" and populated:
+        elif label == "MISP session" and holding == _configured_db():
             hint = ("MISP's sessions are in this Redis, so the plumbing is right and this one "
                     "cookie has no session behind it. Log in to MISP again in this browser and "
                     "retry: an expired or logged-out session leaves the cookie in place.")
+        elif label == "MISP session" and holding is not None:
+            hint = (f"MISP's sessions are in database {holding} of this Redis, not in database "
+                    f"{_configured_db()}. Set MISP_SESSION_REDIS_DB to {holding}. MISP's own "
+                    f"redis_database setting is a different one: PHP takes the session database "
+                    f"from session.save_path, which is 0 unless it says otherwise.")
         elif label == "MISP session":
             hint = ("Nothing is writing PHP sessions to this Redis. Set session.save_handler = redis "
                     "and session.save_path in PHP, and check that session.save_path names the same "
