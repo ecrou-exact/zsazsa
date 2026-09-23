@@ -164,7 +164,7 @@ def publish(id):
     if tlr is None:
         return "TLR not found", 404
     if not misp_session.current_user_can_publish():
-        flash("Only users with MISP publish rights can publish.", "warning")
+        flash(misp_session.publish_denied_message(), "warning")
         return redirect(url_for("threat_landscape.detail", id=id))
     try:
         misp_store.publish_tlr(id)

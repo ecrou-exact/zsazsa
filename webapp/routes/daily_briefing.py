@@ -628,7 +628,7 @@ def publish(id):
     if briefing is None:
         return "Briefing not found", 404
     if not misp_session.current_user_can_publish():
-        flash("Only users with MISP publish rights can publish.", "warning")
+        flash(misp_session.publish_denied_message(), "warning")
         return redirect(url_for("daily_briefing.detail", id=id))
     try:
         misp_store.publish_briefing(id)
@@ -654,6 +654,10 @@ def resend(id):
         redirect_target = url_for("daily_briefing.list_briefings")
     if getattr(briefing, "review_state", None) != misp_store.BRIEFING_REVIEW_PUBLISHED:
         flash("Only published briefings can be resent.", "warning")
+        return redirect(redirect_target)
+    # A resend reaches the same recipients as publishing, so it takes the same right.
+    if not misp_session.current_user_can_publish():
+        flash(misp_session.publish_denied_message("resend"), "warning")
         return redirect(redirect_target)
     _start_briefing_delivery(id, briefing.date,
                              url_for("daily_briefing.detail", id=id, _external=True), "resend")

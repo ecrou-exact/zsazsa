@@ -257,6 +257,12 @@ def wizard_edit(id):
     vea = misp_store.get_vea(id)
     if vea is None:
         return "VEA not found", 404
+    # As for flash intel alerts: the detail page hides Edit once an advisory is
+    # published, and this refuses the post itself, for publishers too, so a
+    # resend cannot deliver a changed advisory under the original approval.
+    if vea.review_state == misp_store.VEA_REVIEW_APPROVED:
+        flash("Published advisories cannot be edited.", "warning")
+        return redirect(url_for("vea.detail", id=id))
     if request.method == "POST":
         data = _form_data(request.form, vea_id=vea.vea_id)
         source_hints = data.get("source_event_hints") or {}
@@ -265,7 +271,7 @@ def wizard_edit(id):
         )
         action = request.form.get("action", "save")
         if action == "publish" and not misp_session.current_user_can_publish():
-            flash("Only users with MISP publish rights can approve and publish.", "warning")
+            flash(misp_session.publish_denied_message("approve and publish"), "warning")
             action = "save"
         if action == "submit":
             data["review_state"] = misp_store.VEA_REVIEW_PENDING
@@ -395,7 +401,7 @@ def approve(id):
         flash("A target audience is required before publishing. Edit the advisory and select an audience first.", "warning")
         return redirect(url_for("vea.detail", id=id))
     if not misp_session.current_user_can_publish():
-        flash("Only users with MISP publish rights can approve and publish.", "warning")
+        flash(misp_session.publish_denied_message("approve and publish"), "warning")
         return redirect(url_for("vea.detail", id=id))
     try:
         misp_store.publish_vea(id)
@@ -447,6 +453,10 @@ def resend(id):
         redirect_target = url_for("vea.review")
     if getattr(vea, "review_state", "") != misp_store.VEA_REVIEW_APPROVED:
         flash("Only published advisories can be resent.", "warning")
+        return redirect(redirect_target)
+    # A resend reaches the same recipients as publishing, so it takes the same right.
+    if not misp_session.current_user_can_publish():
+        flash(misp_session.publish_denied_message("resend"), "warning")
         return redirect(redirect_target)
 
     _start_vea_delivery(vea.vea_id, id, "resend")

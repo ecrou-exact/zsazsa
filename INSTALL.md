@@ -279,6 +279,8 @@ All three failures look the same from the outside: nobody is ever identified, an
 
 With `MISP_SESSION_REDIRECT_TO_LOGIN` on, a visitor without a valid MISP session is redirected to MISP's login page. With it off, such requests fall back to the `admin@admin.test`. Users seen through a session are recorded and listed on the community page. The public indicator feed URL and the Diamond Model image endpoint stay reachable without a session, since they are capability URLs meant to be handed out.
 
+Approving, publishing and (re)sending a product, and setting a stakeholder's product to automated delivery, take MISP's own **publish** permission (`perm_publish` on the user's role). Once single sign-on is configured, meaning `MISP_SESSION_REDIRECT_TO_LOGIN` is on or `MISP_SESSION_COOKIE_NAME` is set, a request nobody could be identified for may not publish: that covers the `admin@admin.test` fallback as well as a session Redis that is down, since otherwise dropping the cookie would be enough to publish. Only an install without single sign-on, where everyone works as the same trusted identity, publishes without a MISP user. Clear `MISP_SESSION_COOKIE_NAME` together with the redirect to return to that mode. Leaving both empty while zsazsa still recognises users through the detected cookie name keeps the fallback able to publish.
+
 | Setting | Description |
 |---|---|
 | `MISP_SESSION_REDIRECT_TO_LOGIN` | Redirect visitors without a MISP session to MISP's login page |

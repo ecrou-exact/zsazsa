@@ -270,7 +270,7 @@ def publish(id):
     if tap is None:
         return "Threat actor profile not found", 404
     if not misp_session.current_user_can_publish():
-        flash("Only users with MISP publish rights can publish.", "warning")
+        flash(misp_session.publish_denied_message(), "warning")
         return redirect(url_for("threat_actor_profile.detail", id=id))
     try:
         misp_store.publish_threat_actor_profile(id)
@@ -288,6 +288,10 @@ def notify(id):
         return "Threat actor profile not found", 404
     if tap.status != "Published":
         flash("Publish the profile before notifying recipients.", "warning")
+        return redirect(url_for("threat_actor_profile.detail", id=id))
+    # Notifying reaches the same recipients as publishing, so it takes the same right.
+    if not misp_session.current_user_can_publish():
+        flash(misp_session.publish_denied_message("notify recipients"), "warning")
         return redirect(url_for("threat_actor_profile.detail", id=id))
     diamond_url = url_for("threat_actor_profile.diamond_png", id=id, _external=True)
 

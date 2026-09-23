@@ -605,8 +605,11 @@
         <i class="fas fa-check-circle me-1"></i> Publish &amp; notify
       </button>
       {% elif is_edit %}
-      <span class="d-block" style="cursor:not-allowed;" title="Only users with MISP publish rights can approve and publish.">
-        <button type="button" class="btn btn-success w-100" disabled style="pointer-events:none;">
+      {# The title sits on a wrapper because a disabled button fires no hover
+         events. The wrapper is a grid of its own so the button inside is laid
+         out exactly like the enabled one, without the inline gap under it. #}
+      <span class="d-grid" style="cursor:not-allowed;" title="Only users with MISP publish rights can approve and publish.">
+        <button type="button" class="btn btn-success" disabled style="pointer-events:none;">
           <i class="fas fa-check-circle me-1"></i> Publish &amp; notify
         </button>
       </span>
