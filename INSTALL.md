@@ -221,6 +221,7 @@ This tab covers the MISP server zsazsa uses as its own **data store**, configure
 | `MISP_WEBAPP_URL` | URL of the MISP server zsazsa uses to store its own program data |
 | `MISP_WEBAPP_KEY` | API key for the webapp MISP server |
 | `MISP_WEBAPP_VERIFYCERT` | Whether to verify the webapp MISP server's TLS certificate |
+| `RULEZET_URL` | Base URL of a [Rulezet](https://rulezet.org) instance, searched for public detection rules by CVE ID or MITRE ATT&CK technique from the vulnerability advisory, threat actor profile and daily briefing forms, and used to validate the rule of a detection engineering request. Leave empty to disable the lookup |
 
 ### Products
 
@@ -331,7 +332,7 @@ Token usage is recorded per provider in the `llm_usage` table of the analyser da
 
 ### Context elements
 
-This tab covers zsazsa's MISP tags and tag presets. The entity type markers `TAG_STAKEHOLDER`, `TAG_PIR`, `TAG_GIR` and `TAG_RFI` identify the corresponding zsazsa entities in MISP. The product classification tags `TAG_FLASH_INTEL`, `TAG_VEA`, `TAG_BRIEFING`, `TAG_TLR`, `TAG_INDICATOR_FEED` and `TAG_THREAT_ACTOR_PROFILE` mark products by type. `SCRAPER_MARKER_TAG` is the tag the analyser and the data collection page use to recognise events coming from the misp-scraper instance, `TAG_COLLECTION_FOLLOWUP` flags collection items for analyst follow-up, and `TAG_COLLECTION_DISMISSED` marks events from another MISP server that an analyst set aside, since their workflow state belongs to that server. `RECOMMENDED_ACTIONS_IMMEDIATE` and `RECOMMENDED_ACTIONS_NEAR_TERM` are organisation-wide presets offered as one-click insert buttons in the Flash Intel and VEA wizards. Finally, `COLLECTION_TAG_STRIP_PREFIXES` and `COLLECTION_TAG_HIDE_PREFIXES` control how tags are shortened or hidden when displaying events on the data collection page.
+This tab covers zsazsa's MISP tags and tag presets. The entity type markers `TAG_STAKEHOLDER`, `TAG_PIR`, `TAG_GIR` and `TAG_RFI` identify the corresponding zsazsa entities in MISP. The product classification tags `TAG_FLASH_INTEL`, `TAG_VEA`, `TAG_BRIEFING`, `TAG_TLR`, `TAG_INDICATOR_FEED`, `TAG_THREAT_ACTOR_PROFILE` and `TAG_DETECTION_ENG` mark products by type. `SCRAPER_MARKER_TAG` is the tag the analyser and the data collection page use to recognise events coming from the misp-scraper instance, `TAG_COLLECTION_FOLLOWUP` flags collection items for analyst follow-up, and `TAG_COLLECTION_DISMISSED` marks events from another MISP server that an analyst set aside, since their workflow state belongs to that server. `RECOMMENDED_ACTIONS_IMMEDIATE` and `RECOMMENDED_ACTIONS_NEAR_TERM` are organisation-wide presets offered as one-click insert buttons in the Flash Intel and VEA wizards. Finally, `COLLECTION_TAG_STRIP_PREFIXES` and `COLLECTION_TAG_HIDE_PREFIXES` control how tags are shortened or hidden when displaying events on the data collection page.
 
 Everything zsazsa writes in the `zsazsa:` namespace is attached as a local tag, so it never syncs to connected MISP instances.
 
@@ -347,6 +348,7 @@ Everything zsazsa writes in the `zsazsa:` namespace is attached as a local tag, 
 | `TAG_TLR` | Marks published threat landscape report products |
 | `TAG_INDICATOR_FEED` | Marks indicator feed products |
 | `TAG_THREAT_ACTOR_PROFILE` | Marks threat actor profile products |
+| `TAG_DETECTION_ENG` | Marks detection engineering request products |
 | `SCRAPER_MARKER_TAG` | Identifies events coming from the misp-scraper instance |
 | `TAG_COLLECTION_FOLLOWUP` | Flags collection items for analyst follow-up |
 | `TAG_COLLECTION_DISMISSED` | Marks events from another MISP server that an analyst set aside |
