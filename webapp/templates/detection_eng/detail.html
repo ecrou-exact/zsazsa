@@ -174,7 +174,9 @@
       </div>
     </div>
 
-    {% if der.review_state != 'rejected' %}
+    {# An Active request's rule is the one Rulezet passed at sign-off, so it is
+       shown read-only until the request is moved back (set_draft_rule refuses). #}
+    {% if der.review_state != 'rejected' and der.status != 'Active' %}
     <div class="card content-card mb-3">
       <div class="card-header"><i class="fas fa-code me-2"></i>Draft rule</div>
       <div class="card-body">
@@ -212,6 +214,9 @@
       <div class="card-header"><i class="fas fa-code me-2"></i>Draft rule <span class="badge bg-secondary ms-1">{{ der.format | upper }}</span></div>
       <div class="card-body">
         <pre class="mb-0 font-monospace small" style="white-space:pre-wrap;">{{ der.draft_rule }}</pre>
+        {% if der.status == 'Active' %}
+        <div class="form-text mt-2">This request is Active. To change its rule, move it back to In Test first; marking it Active again validates the new rule.</div>
+        {% endif %}
       </div>
     </div>
     {% endif %}
@@ -441,6 +446,18 @@
   contentEl.addEventListener('input', refreshValidateButton);
   refreshValidateButton();
 
+  // Rulezet's answer (and any error text) is shown as text, never parsed as
+  // HTML: a rule's error message can quote the rule, which is user content.
+  function showStatus(tone, icon, text) {
+    status.className = 'small fw-semibold mt-2 text-' + tone;
+    status.textContent = '';
+    var i = document.createElement('i');
+    i.className = 'fas ' + icon + ' me-1';
+    status.appendChild(i);
+    status.appendChild(document.createTextNode(text));
+    status.style.display = '';
+  }
+
   btn.addEventListener('click', function() {
     var origHTML = btn.innerHTML;
     btn.disabled = true;
@@ -455,26 +472,19 @@
     .then(zsazsaReadJson)
     .then(function(data) {
       if (!data.ok) {
-        status.className = 'small fw-semibold mt-2 text-danger';
-        status.innerHTML = '<i class="fas fa-triangle-exclamation me-1"></i>' + (data.error || 'Validation failed.');
-        status.style.display = '';
+        showStatus('danger', 'fa-triangle-exclamation', data.error || 'Validation failed.');
         return;
       }
       if (data.valid) {
-        status.className = 'small fw-semibold mt-2 text-success';
-        status.innerHTML = '<i class="fas fa-circle-check me-1"></i>Valid ' + formatEl.value.toUpperCase() + ' syntax.'
-          + (data.warnings.length ? ' Warnings: ' + data.warnings.join('; ') : '')
-          + ' Save the draft rule — required before marking Active.';
+        showStatus('success', 'fa-circle-check', 'Valid ' + formatEl.value.toUpperCase() + ' syntax.'
+          + ((data.warnings || []).length ? ' Warnings: ' + data.warnings.join('; ') : '')
+          + ' Save the draft rule — required before marking Active.');
       } else {
-        status.className = 'small fw-semibold mt-2 text-danger';
-        status.innerHTML = '<i class="fas fa-circle-xmark me-1"></i>Invalid: ' + (data.errors.join('; ') || 'no details returned.');
+        showStatus('danger', 'fa-circle-xmark', 'Invalid: ' + ((data.errors || []).join('; ') || 'no details returned.'));
       }
-      status.style.display = '';
     })
     .catch(function(err) {
-      status.className = 'small fw-semibold mt-2 text-danger';
-      status.innerHTML = '<i class="fas fa-triangle-exclamation me-1"></i>Validation did not complete: ' + zsazsaErrorText(err);
-      status.style.display = '';
+      showStatus('danger', 'fa-triangle-exclamation', 'Validation did not complete: ' + zsazsaErrorText(err));
     })
     .finally(function() {
       btn.innerHTML = origHTML;

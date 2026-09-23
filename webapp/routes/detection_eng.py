@@ -45,6 +45,9 @@ def _form_data(form, der_id=""):
         "expected_output": form.get("expected_output", "").strip(),
         "existing_coverage": misp_store._split_lines(form.get("existing_coverage")),
         "test_cases": misp_store._split_lines(form.get("test_cases")),
+        # On edit these two are replaced with the stored values (see
+        # wizard_edit): the rule has its own form on the detail page, which
+        # knows when it may change.
         "format": form.get("format", ""),
         "draft_rule": form.get("draft_rule", "").strip(),
         "priority": form.get("priority", ""),
@@ -237,16 +240,30 @@ def wizard_edit(id):
     der = misp_store.get_der(id)
     if der is None:
         return "Detection engineering request not found", 404
+    # Approval is final. An approved request has been sent to its stakeholders
+    # and is what the engineering status tracks, so editing it here would
+    # either change what they were sent without telling them, or (by
+    # resubmitting it) drop it back into review while its status is In Dev or
+    # further. The detail page only hides the Edit button; this is the check.
+    if der.review_state == misp_store.DER_REVIEW_APPROVED:
+        flash(f"{der.der_id} is published and can no longer be edited.", "warning")
+        return redirect(url_for("detection_eng.detail", id=id))
     if request.method == "POST":
         data = _form_data(request.form, der_id=der.der_id)
         data["status"] = der.status
+        # The draft rule and its format are only changed through
+        # set_draft_rule, which refuses while the request is Active. The
+        # wizard carries neither as an editable field, so whatever the form
+        # posts for them is ignored rather than trusted.
+        data["format"] = der.format
+        data["draft_rule"] = der.draft_rule
         source_hints = data.get("source_event_hints") or {}
         source_events = misp_store.fetch_source_events(
             data.get("source_event_uuids") or [], source_hints=source_hints, strict_source=bool(source_hints)
         )
         action = request.form.get("action", "save")
         if action == "publish" and not misp_session.current_user_can_publish():
-            flash("Only users with MISP publish rights can approve and publish.", "warning")
+            flash(misp_session.publish_denied_message("approve and publish"), "warning")
             action = "save"
         if action == "submit":
             data["review_state"] = misp_store.DER_REVIEW_PENDING
@@ -284,23 +301,18 @@ def set_draft_rule(id):
     der = misp_store.get_der(id)
     if der is None:
         return "Detection engineering request not found", 404
+    # An Active request's rule is the one that passed Rulezet when it was
+    # signed off. Saving a new one over it here would skip that check, so the
+    # request has to be moved back (to In Test, say) first; setting it Active
+    # again then validates the new rule.
+    if der.status == misp_store.DER_STATUS_ACTIVE:
+        flash(f"{der.der_id} is Active, so its rule cannot be changed. Move it back to In Test first; "
+              "marking it Active again validates the new rule.", "warning")
+        return redirect(url_for("detection_eng.detail", id=id))
     fmt = request.form.get("format", "").strip()
     draft_rule = request.form.get("draft_rule", "").strip()
     try:
-        misp_store.update_der(id, {
-            "der_id": der.der_id, "title": der.title, "technique": der.technique,
-            "log_sources": der.log_sources, "hypothesis": der.hypothesis,
-            "expected_output": der.expected_output, "existing_coverage": der.existing_coverage,
-            "test_cases": der.test_cases, "format": fmt, "draft_rule": draft_rule,
-            "priority": der.priority, "status": der.status,
-            "tlp": der.tlp, "author": der.author, "audience": der.audience,
-            "source_event_uuids": list(getattr(der, "source_event_uuids", []) or []),
-            "source_event_hints": dict(getattr(der, "source_event_hints", {}) or {}),
-            "source_event_uuid": der.source_event_uuid,
-            "linked_pir_uuid": der.linked_pir_uuid,
-            "review_state": der.review_state,
-            "rejection_reason": der.rejection_reason,
-        })
+        misp_store.update_der(id, misp_store._der_data(der, format=fmt, draft_rule=draft_rule))
         audit.record("update", "detection_eng", entity_id=id, entity_label=f"{der.der_id} draft rule updated")
         flash(f"{der.der_id} draft rule saved.", "success")
     except Exception as exc:
@@ -317,7 +329,7 @@ def approve(id):
         flash("A target audience is required before publishing. Edit the request and select an audience first.", "warning")
         return redirect(url_for("detection_eng.detail", id=id))
     if not misp_session.current_user_can_publish():
-        flash("Only users with MISP publish rights can approve and publish.", "warning")
+        flash(misp_session.publish_denied_message("approve and publish"), "warning")
         return redirect(url_for("detection_eng.detail", id=id))
     try:
         misp_store.publish_der(id)
@@ -335,6 +347,12 @@ def reject(id):
     der = misp_store.get_der(id)
     if der is None:
         return "Detection engineering request not found", 404
+    # Only a request still in review can be rejected. Rejecting an approved one
+    # would leave its engineering status (In Dev, Active, ...) on a request
+    # that is no longer approved; one that is no longer wanted is Retired.
+    if der.review_state == misp_store.DER_REVIEW_APPROVED:
+        flash(f"{der.der_id} is already published; retire it from the engineering status instead.", "warning")
+        return redirect(url_for("detection_eng.detail", id=id))
     reason = request.form.get("reason", "").strip()
     try:
         misp_store.reject_der(id, reason=reason)
@@ -345,26 +363,47 @@ def reject(id):
     return redirect(url_for("detection_eng.detail", id=id))
 
 
+def _is_completion(der, status):
+    """Whether moving `der` to `status` is the request being delivered.
+
+    Only the first move into Active counts. From Retired it is the same
+    detection being switched back on, and stakeholders were told when it
+    first went live; Resend is there if they need telling again.
+    """
+    return (status == misp_store.DER_STATUS_ACTIVE
+            and der.status not in (misp_store.DER_STATUS_ACTIVE, misp_store.DER_STATUS_RETIRED))
+
+
 def _apply_der_status(der, status):
     """Move a request's engineering status, enforcing the same rules
     regardless of caller (detail page dropdown or kanban drag-and-drop).
 
-    Pending is the untriaged state: a request only leaves it once the
-    request itself has been approved, mirroring how a PIR only leaves
-    Pending after intake triage. Moving into Active additionally requires a
-    draft rule that currently passes Rulezet validation, so nothing can be
-    signed off as delivered with a rule that does not parse.
+    Pending is the untriaged state: every other status requires the request
+    itself to be approved, mirroring how a PIR only leaves Pending after intake
+    triage. Checking this on the target rather than only when leaving Pending
+    also covers requests written before approval was made final. Moving into
+    Active additionally requires a draft rule that currently passes Rulezet
+    validation, so nothing can be signed off as delivered with a rule that
+    does not parse, and publish rights, because the first move into Active
+    notifies every stakeholder.
+
+    Setting the status a request already has changes nothing and sends
+    nothing, so a resubmitted form or a card dropped back on its own column
+    does not notify anyone twice.
 
     Returns None on success, or an error message.
     """
     if status not in misp_store.DER_STATUSES:
         return "Invalid status."
-    if der.status == misp_store.DER_STATUS_PENDING and status != misp_store.DER_STATUS_PENDING \
-            and der.review_state != misp_store.DER_REVIEW_APPROVED:
+    if status == der.status:
+        return None
+    if status != misp_store.DER_STATUS_PENDING and der.review_state != misp_store.DER_REVIEW_APPROVED:
         return "Approve this request before tracking its engineering status."
-    if status == misp_store.DER_STATUS_PENDING and der.status != misp_store.DER_STATUS_PENDING:
+    if status == misp_store.DER_STATUS_PENDING:
         return "A request cannot be moved back to Pending."
     if status == misp_store.DER_STATUS_ACTIVE:
+        if not misp_session.current_user_can_publish():
+            return misp_session.publish_denied_message("mark a request Active")
         if not (der.format or "").strip() or not (der.draft_rule or "").strip():
             return "A draft rule (with its format) is required, and must pass Rulezet validation, before marking this Active."
         result = validate_rule(der.format, der.draft_rule)
@@ -375,22 +414,9 @@ def _apply_der_status(der, status):
         if not result.get("valid"):
             return "Draft rule failed Rulezet validation: " + "; ".join(result.get("errors") or ["no details returned."])
 
-    misp_store.update_der(der.uuid, {
-        "der_id": der.der_id, "title": der.title, "technique": der.technique,
-        "log_sources": der.log_sources, "hypothesis": der.hypothesis,
-        "expected_output": der.expected_output, "existing_coverage": der.existing_coverage,
-        "test_cases": der.test_cases, "format": der.format, "draft_rule": der.draft_rule,
-        "priority": der.priority, "status": status,
-        "tlp": der.tlp, "author": der.author, "audience": der.audience,
-        "source_event_uuids": list(getattr(der, "source_event_uuids", []) or []),
-        "source_event_hints": dict(getattr(der, "source_event_hints", {}) or {}),
-        "source_event_uuid": der.source_event_uuid,
-        "linked_pir_uuid": der.linked_pir_uuid,
-        "review_state": der.review_state,
-        "rejection_reason": der.rejection_reason,
-    })
+    misp_store.update_der(der.uuid, misp_store._der_data(der, status=status))
     audit.record("update", "detection_eng", entity_id=der.uuid, entity_label=f"{der.der_id} status={status}")
-    if status == misp_store.DER_STATUS_ACTIVE and der.review_state == misp_store.DER_REVIEW_APPROVED:
+    if _is_completion(der, status):
         _start_der_delivery(der.der_id, der.uuid, "completed")
     return None
 
@@ -404,12 +430,15 @@ def set_status(id):
     if der is None:
         return "Detection engineering request not found", 404
     status = request.form.get("status", "").strip()
+    if status == der.status:
+        flash(f"{der.der_id} is already {status}.", "info")
+        return redirect(url_for("detection_eng.detail", id=id))
     error = _apply_der_status(der, status)
     if error:
         flash(error, "warning")
         return redirect(url_for("detection_eng.detail", id=id))
     flash(f"{der.der_id} status set to {status}.", "success")
-    if status == misp_store.DER_STATUS_ACTIVE and der.review_state == misp_store.DER_REVIEW_APPROVED:
+    if _is_completion(der, status):
         flash("Completion notifications are being sent in the background; the job badge reports the result.", "info")
     return redirect(url_for("detection_eng.detail", id=id))
 
@@ -451,6 +480,11 @@ def resend(id):
         redirect_target = url_for("detection_eng.review")
     if getattr(der, "review_state", "") != misp_store.DER_REVIEW_APPROVED:
         flash("Only published requests can be resent.", "warning")
+        return redirect(redirect_target)
+    # A resend reaches the same stakeholders as publishing it did, so it needs
+    # the same rights.
+    if not misp_session.current_user_can_publish():
+        flash(misp_session.publish_denied_message("resend"), "warning")
         return redirect(redirect_target)
 
     _start_der_delivery(der.der_id, id, "resend")

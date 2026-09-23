@@ -51,7 +51,10 @@
           </div>
           <div class="col-md-2">
             <label class="form-label">Format</label>
-            <select name="format" id="der-format" class="form-select">
+            {# On edit the format belongs to the draft rule, which is changed on the
+               request page; wizard_edit ignores whatever is posted here. #}
+            <select name="format" id="der-format" class="form-select"
+                    {% if is_edit %}disabled title="Change the format with the draft rule on the request page."{% endif %}>
               <option value="">-</option>
               {% for f in formats %}
               <option value="{{ f }}" {{ 'selected' if der and der.format == f }}>{{ f | upper }}</option>
@@ -127,8 +130,6 @@
         </div>
       </div>
     </div>
-
-    <input type="hidden" name="draft_rule" value="{{ der.draft_rule if der else '' }}">
 
     <div class="card content-card mb-4">
       <div class="card-header"><i class="fas fa-link me-2"></i>Source MISP event</div>

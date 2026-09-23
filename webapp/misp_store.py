@@ -5634,9 +5634,18 @@ DER_REVIEW_REJECTED = "rejected"
 DER_REVIEW_STATES = [DER_REVIEW_DRAFT, DER_REVIEW_PENDING, DER_REVIEW_APPROVED, DER_REVIEW_REJECTED]
 
 DER_PRIORITIES = ["Low", "Medium", "High", "Critical"]
-DER_STATUSES = ["Pending", "In Dev", "In Test", "Active", "Retired"]
-DER_STATUS_PENDING = DER_STATUSES[0]
-DER_STATUS_ACTIVE = DER_STATUSES[3]
+# The engineering status is stored as its display label, so these literals are
+# what existing requests already carry in MISP; they cannot be renamed without
+# migrating them. "Pending" here is the team's untriaged column and has nothing
+# to do with DER_REVIEW_PENDING ("pending-review"), which is the publish
+# workflow waiting on a reviewer. A request can sit in both at once.
+DER_STATUS_PENDING = "Pending"
+DER_STATUS_IN_DEV = "In Dev"
+DER_STATUS_IN_TEST = "In Test"
+DER_STATUS_ACTIVE = "Active"
+DER_STATUS_RETIRED = "Retired"
+DER_STATUSES = [DER_STATUS_PENDING, DER_STATUS_IN_DEV, DER_STATUS_IN_TEST,
+                DER_STATUS_ACTIVE, DER_STATUS_RETIRED]
 
 # Formats Rulezet's public /validate endpoint knows how to check.
 DER_FORMATS = ["yara", "sigma", "suricata", "zeek", "wazuh", "nse", "crs",
@@ -5721,6 +5730,39 @@ def _der_ns(event):
         published_at=_published_at(event),
         created_at=_parse_dt(event.date.isoformat() if event.date else None),
     )
+
+
+# Every field of a request, named as _der_obj() takes them and as _der_ns()
+# reads them back. The object is deleted and written again on every change, so
+# anything that rewrites it for one field (review state, engineering status,
+# the draft rule) has to carry all the others across. _der_data() builds that
+# dict from this list instead of each caller spelling the fields out again,
+# which is how one of them ends up silently dropping a field.
+_DER_FIELDS = (
+    "der_id", "title", "technique", "log_sources", "hypothesis",
+    "expected_output", "existing_coverage", "test_cases", "format",
+    "draft_rule", "priority", "status", "tlp", "author", "audience",
+    "review_state", "rejection_reason", "source_event_uuids",
+    "source_event_hints", "linked_pir_uuid", "creator", "approved_by",
+)
+
+
+def _der_data(der, **overrides):
+    """The write dict for update_der(), taken from a stored request.
+
+    `overrides` replaces the fields the caller is actually changing. Lists and
+    dicts are copied so the caller's namespace is not changed under it.
+    """
+    data = {}
+    for field in _DER_FIELDS:
+        value = getattr(der, field, None)
+        if isinstance(value, list):
+            value = list(value)
+        elif isinstance(value, dict):
+            value = dict(value)
+        data[field] = value if value is not None else ""
+    data.update(overrides)
+    return data
 
 
 def _der_id_from_event_id(event_id):
@@ -5919,20 +5961,8 @@ def set_der_review_state(uuid, state, reason=None):
         raise RuntimeError(f"DER event {uuid} not found")
     der = _der_ns(event)
 
-    update_der(uuid, {
-        "der_id": der.der_id, "title": der.title, "technique": der.technique,
-        "log_sources": der.log_sources, "hypothesis": der.hypothesis,
-        "expected_output": der.expected_output, "existing_coverage": der.existing_coverage,
-        "test_cases": der.test_cases, "format": der.format, "draft_rule": der.draft_rule,
-        "priority": der.priority, "status": der.status,
-        "tlp": der.tlp, "author": der.author, "audience": der.audience,
-        "source_event_uuids": list(getattr(der, "source_event_uuids", []) or []),
-        "source_event_hints": dict(getattr(der, "source_event_hints", {}) or {}),
-        "source_event_uuid": der.source_event_uuid,
-        "linked_pir_uuid": der.linked_pir_uuid,
-        "review_state": state,
-        "rejection_reason": reason or der.rejection_reason,
-    })
+    update_der(uuid, _der_data(der, review_state=state,
+                               rejection_reason=reason or der.rejection_reason))
 
     workflow_map = {
         DER_REVIEW_DRAFT: "draft",
