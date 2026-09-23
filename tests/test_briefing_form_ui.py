@@ -28,9 +28,12 @@ class BriefingComposeForm(unittest.TestCase):
 
     @classmethod
     def setUpClass(cls):
+        from unittest import mock
+
         from playwright.sync_api import sync_playwright
         from werkzeug.serving import make_server
 
+        import config
         from webapp import create_app, misp_store
 
         drafts = [b for b in misp_store.list_briefings()
@@ -38,6 +41,12 @@ class BriefingComposeForm(unittest.TestCase):
         if not drafts:
             raise unittest.SkipTest("no draft briefing with stories to open")
         cls.briefing = max(drafts, key=lambda b: len(b.stories))
+
+        # The browser carries no MISP session, so the login redirect has to be off
+        # or every page it opens is a 302 to MISP's login.
+        sso = mock.patch.object(config, "MISP_SESSION_REDIRECT_TO_LOGIN", False)
+        sso.start()
+        cls.addClassCleanup(sso.stop)
 
         cls._server = make_server("127.0.0.1", 0, create_app(), threaded=True)
         cls.base_url = f"http://127.0.0.1:{cls._server.server_port}"

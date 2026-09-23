@@ -27,6 +27,16 @@ keep the names and tags they got. Deleting their event in MISP changes nothing.
   same mail comes back on every run.
 - An indicator feed with tag filters crashed. The AND/NOT query called PyMISP's
   build_complex_query on the class instead of on a connection.
+- Pulling an event from a MISP server that had stopped answering held the page
+  for as long as that server took, rather than the ten seconds the timeout
+  promises. The thread pool was waiting for the stalled call on its way out.
+- Single sign-on set up against the wrong Redis database was reported as
+  "nothing is writing PHP sessions to this Redis". PHP takes the session database from
+  `session.save_path` and MISP's installers leave that at 0, while MISP's own
+  `redis_database` is 13 and easy to copy across. **Test single sign-on** now
+  looks in the other databases of the same Redis and, when it finds the
+  sessions there, names that database and the setting to change. The log says
+  the same.
 
 ### Added
 
@@ -34,6 +44,14 @@ keep the names and tags they got. Deleting their event in MISP changes nothing.
   page says so instead of showing an empty form.
 - Newsletter e-mails as test fixtures, read both as they arrived and with their
   plain text part taken out.
+
+### Internal
+
+- Linting moved from pyflakes to ruff, with the rule selection written out in
+  `ruff.toml` so a local run reports the same as CI.
+- Tests that every setting in `config/__init__.py.example` is explained in
+  INSTALL.md, and that a CTI product with its own page is registered everywhere
+  it has to be.
 
 ## 1.0.4
 

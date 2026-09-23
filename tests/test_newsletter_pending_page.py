@@ -32,6 +32,8 @@ class PendingQueue(unittest.TestCase):
             mock.patch.object(config, "DB_FILE", str(Path(tmp.name) / "test.db"), create=True),
             mock.patch.object(config, "LOG_FILE", str(Path(tmp.name) / "test.log"), create=True),
             mock.patch.object(collection_cache, "start_worker"),
+            # Off, or a developer who runs single sign-on gets a 302 per request.
+            mock.patch.object(config, "MISP_SESSION_REDIRECT_TO_LOGIN", False),
             mock.patch.object(misp_store, "list_pending_newsletters",
                               side_effect=lambda: list(_PENDING)),
         ]
