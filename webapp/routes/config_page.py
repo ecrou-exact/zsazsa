@@ -520,9 +520,13 @@ SMTP_FROM = {values.get('SMTP_FROM', '')!r}
 # Flowintel case management instances
 FLOWINTEL_INSTANCES = {flowintel_instances_repr}
 
-# Rulezet instance (https://github.com/CIRCL/rulezet-core) queried, by CVE ID,
-# for public detection rules to suggest while drafting a Vulnerability advisory.
-# Leave empty to disable the lookup.
+# Rulezet instance (https://github.com/ngsoti/rulezet-core) queried for public
+# detection rules by CVE ID or MITRE ATT&CK technique, from the "Search Rulezet"
+# buttons on the Vulnerability advisory, Threat actor profile and Daily briefing
+# forms. It also validates the draft rule of a Detection engineering request:
+# without Rulezet a request cannot be marked Active.
+# Leave empty to disable the integration. Point at a local dev instance
+# (e.g. 'http://127.0.0.1:7009') or the public 'https://rulezet.org'.
 RULEZET_URL = {values.get('RULEZET_URL', '')!r}
 
 # Additional MISP servers queried by the data-collection page.

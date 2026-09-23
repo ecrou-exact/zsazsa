@@ -958,6 +958,28 @@ def lookup_org():
     return jsonify({"name": None, "error": "Not found."})
 
 
+# A whole technique ID, nothing around it: the same pattern the forms use to
+# pick IDs out of the checked techniques, anchored because here it is a
+# gatekeeper for what gets forwarded to Rulezet, not a search.
+_TECHNIQUE_ID_RE = re.compile(r"^T\d{4}(\.\d{3})?$")
+
+
+def _id_list(body: dict, key: str) -> tuple[list[str], str]:
+    """The list of IDs posted under key, stripped and upper-cased.
+
+    Returns (ids, "") or ([], error). The forms always post a list of strings,
+    but anything can reach this endpoint: a bare string would otherwise be
+    iterated one character at a time, and a number in the list would reach
+    .strip() and turn a bad request into a 500.
+    """
+    raw = body.get(key)
+    if raw is None:
+        return [], ""
+    if not isinstance(raw, list) or not all(isinstance(v, str) for v in raw):
+        return [], f"{key} must be a list of strings."
+    return [v.strip().upper() for v in raw if v.strip()], ""
+
+
 @bp.route("/cve-lookup", methods=["POST"])
 @rate_limited("api_cve_lookup", limit=20, window_s=60)
 def cve_lookup():
@@ -969,7 +991,9 @@ def cve_lookup():
     body, err = _json_object()
     if err:
         return jsonify({"ok": False, "error": "Invalid JSON payload."}), 400
-    raw_ids = [c.strip().upper() for c in (body.get("cve_ids") or []) if c.strip()]
+    raw_ids, bad = _id_list(body, "cve_ids")
+    if bad:
+        return jsonify({"ok": False, "error": bad}), 400
     cve_ids = [c for c in raw_ids if c.startswith("CVE-")][:10]
     if not cve_ids:
         return jsonify({"ok": False, "error": "No valid CVE IDs provided"})
@@ -999,7 +1023,9 @@ def rulezet_lookup():
     body, err = _json_object()
     if err:
         return jsonify({"ok": False, "error": "Invalid JSON payload."}), 400
-    raw_ids = [c.strip().upper() for c in (body.get("cve_ids") or []) if c.strip()]
+    raw_ids, bad = _id_list(body, "cve_ids")
+    if bad:
+        return jsonify({"ok": False, "error": bad}), 400
     cve_ids = [c for c in raw_ids if c.startswith("CVE-")][:10]
     if not cve_ids:
         return jsonify({"ok": False, "error": "No valid CVE IDs provided"})
@@ -1022,9 +1048,10 @@ def rulezet_attack_lookup():
     body, err = _json_object()
     if err:
         return jsonify({"ok": False, "error": "Invalid JSON payload."}), 400
-    technique_ids = [
-        t.strip().upper() for t in (body.get("technique_ids") or []) if t.strip()
-    ][:20]
+    raw_ids, bad = _id_list(body, "technique_ids")
+    if bad:
+        return jsonify({"ok": False, "error": bad}), 400
+    technique_ids = [t for t in raw_ids if _TECHNIQUE_ID_RE.match(t)][:20]
     if not technique_ids:
         return jsonify({"ok": False, "error": "No valid technique IDs provided"})
 
@@ -1046,8 +1073,11 @@ def rulezet_validate():
     body, err = _json_object()
     if err:
         return jsonify({"ok": False, "error": "Invalid JSON payload."}), 400
-    rule_format = (body.get("format") or "").strip()
-    content = (body.get("content") or "").strip()
+    rule_format = body.get("format") or ""
+    content = body.get("content") or ""
+    if not isinstance(rule_format, str) or not isinstance(content, str):
+        return jsonify({"ok": False, "error": "format and content must be strings."}), 400
+    rule_format, content = rule_format.strip(), content.strip()
     if not rule_format:
         return jsonify({"ok": False, "error": "No format provided."})
     if not content:

@@ -6356,6 +6356,14 @@ def render_briefing_markdown(briefing, preview_url: str = ""):
             "",
             briefing.notes,
         ])
+    # getattr: a briefing saved before the field existed has no such attribute.
+    if getattr(briefing, "detection_rules", ""):
+        lines.extend([
+            "",
+            "## Detection rules",
+            "",
+            briefing.detection_rules,
+        ])
     if preview_url:
         lines += ["", f"[Open briefing]({preview_url})"]
     return "\n".join(lines)

@@ -7,22 +7,14 @@
  * close-then-reopen, so there is no transition or backdrop flicker between
  * them.
  *
- * Ported from Rulezet's own code-viewer.js (app/static/js/components/code-viewer.js):
- * same highlight.js lazy-loading approach, the same custom YARA/Suricata/TOML
- * grammars (highlight.js ships none of the three), and the same rule-format to
- * highlight.js-language mapping — reused here so a rule looks the same whether
- * viewed on Rulezet or inside this modal.
+ * The rule-format to highlight.js-language mapping and the custom YARA/
+ * Suricata/TOML grammars (hljs-lang/*.js) are ported from Rulezet's own code
+ * viewer (github.com/ngsoti/rulezet-core, AGPL-3.0), so a rule looks the same
+ * whether viewed on Rulezet or inside this modal. highlight.js itself is the
+ * cdnjs "common" build, loaded on first use rather than with the page.
  */
 (function () {
   const HLJS_LANG_DIR = SCRIPT_ROOT + '/static/js/hljs-lang/';
-
-  // Languages the highlight.js core build (loaded from cdnjs below) ships.
-  const KNOWN_HLJS_LANGS = new Set([
-    'bash', 'c', 'cpp', 'css', 'diff', 'go', 'html', 'http', 'java', 'javascript', 'json',
-    'kotlin', 'lua', 'markdown', 'nginx', 'php', 'plaintext', 'python', 'ruby', 'rust',
-    'shell', 'sql', 'swift', 'typescript', 'xml', 'yaml', 'text',
-    'yara', 'suricata', 'toml', // registered at runtime, see registerExtraLanguages()
-  ]);
 
   // Rule format -> highlight.js language.
   const LANG_ALIASES = {
@@ -40,24 +32,34 @@
     sagan: 'suricata',
   };
 
-  function detectLanguage(format) {
+  // Asks the loaded highlight.js rather than a hardcoded list: the cdnjs
+  // common build does not carry every language a rule format could map to
+  // (http and nginx, for one), and a language it lacks must fall back to
+  // plain text instead of making hljs.highlight() throw.
+  function detectLanguage(hljs, format) {
     const hint = (format || '').toLowerCase();
     const mapped = LANG_ALIASES[hint] || hint;
-    return KNOWN_HLJS_LANGS.has(mapped) ? mapped : 'plaintext';
+    return mapped && hljs.getLanguage(mapped) ? mapped : 'plaintext';
   }
 
   let hljsReady = null;
 
+  // Checked against listLanguages(), the registered grammars, and not with
+  // getLanguage(), which also resolves aliases: the common build aliases
+  // "toml" to its INI grammar, so getLanguage('toml') is truthy and the real
+  // TOML grammar would never be registered. A grammar registered under the
+  // name itself wins over an alias of that name.
   async function registerExtraLanguages(hljs) {
-    if (!hljs.getLanguage('yara')) {
+    const registered = hljs.listLanguages();
+    if (!registered.includes('yara')) {
       const { default: yaraLanguage } = await import(HLJS_LANG_DIR + 'hljs-yara.js');
       hljs.registerLanguage('yara', yaraLanguage);
     }
-    if (!hljs.getLanguage('suricata')) {
+    if (!registered.includes('suricata')) {
       const { default: suricataLanguage } = await import(HLJS_LANG_DIR + 'hljs-suricata.js');
       hljs.registerLanguage('suricata', suricataLanguage);
     }
-    if (!hljs.getLanguage('toml')) {
+    if (!registered.includes('toml')) {
       const { default: tomlLanguage } = await import(HLJS_LANG_DIR + 'hljs-toml.js');
       hljs.registerLanguage('toml', tomlLanguage);
     }
@@ -82,7 +84,9 @@
   }
 
   function esc(s) {
-    return String(s ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+    // Quotes too: esc() output also lands inside attribute values.
+    return String(s ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
   }
 
   // Elements live in the shared modal shell (rulezet-search-modal.js's
@@ -163,7 +167,7 @@
     zsazsaShowRulezetDetailView();
 
     loadHljs().then(function (hljs) {
-      const lang = detectLanguage(rule.format);
+      const lang = detectLanguage(hljs, rule.format);
       try {
         const res = lang === 'plaintext'
           ? { value: esc(rule.content || '') }

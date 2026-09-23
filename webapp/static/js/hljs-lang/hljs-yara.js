@@ -1,15 +1,11 @@
 /**
  * hljs-yara.js — highlight.js language definition for YARA rules.
  *
- * highlight.js ships no official YARA grammar (confirmed against the bundled
- * /static/js/hljs.min.js — it's a minimal custom build). This project uses
- * highlight.js exclusively (no CodeMirror anywhere in the codebase), so this
- * follows highlight.js's own language-definition API — registered at runtime
- * via hljs.registerLanguage(), not a CodeMirror mode.
- *
- * Usage:
- *   import yaraLanguage from '/static/js/components/hljs-yara.js'
- *   hljs.registerLanguage('yara', yaraLanguage)
+ * Ported from the Rulezet project (github.com/ngsoti/rulezet-core,
+ * AGPL-3.0), so a rule looks the same in zsazsa's rule viewer as on Rulezet.
+ * highlight.js ships no official grammar for it, so it is registered at
+ * runtime with hljs.registerLanguage() by rulezet-code-modal.js, which loads
+ * this file with a dynamic import() the first time a rule is shown.
  */
 export default function yaraLanguage(hljs) {
     const KEYWORDS = {

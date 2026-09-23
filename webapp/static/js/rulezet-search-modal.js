@@ -12,21 +12,55 @@
  * existing single-rule code modal (window.zsazsaShowRuleCode).
  */
 (function () {
+  // Shared across every Rulezet CVE/ATT&CK lookup (VEA wizard, Threat actor
+  // profile, Daily briefing, Detection engineering request): appends
+  // "title — url" to a textarea, deduplicated, as one line. Used by both the
+  // search-results table here and the single-rule code modal
+  // (rulezet-code-modal.js).
+  function ruleReferenceLine(rule) {
+    return (rule.title || 'Rule') + ' — ' + rule.url;
+  }
+
+  window.zsazsaAddRuleReference = function (rule, targetTextareaEl) {
+    if (!targetTextareaEl) return;
+    var line = ruleReferenceLine(rule);
+    var existing = targetTextareaEl.value.split('\n').map(function (l) { return l.trim(); }).filter(Boolean);
+    if (!existing.includes(line)) existing.push(line);
+    targetTextareaEl.value = existing.join('\n');
+  };
+
+  // The textarea itself is the source of truth for "already added": a rule
+  // whose "title — url" line is already there stays excluded from later
+  // searches too, even after the modal is closed and reopened.
+  window.zsazsaHasRuleReference = function (rule, targetTextareaEl) {
+    if (!targetTextareaEl) return false;
+    var line = ruleReferenceLine(rule);
+    return targetTextareaEl.value.split('\n').map(function (l) { return l.trim(); }).includes(line);
+  };
+
+  // Quotes too: the values come from the Rulezet API (format, CVE IDs,
+  // technique IDs) and some of them are written into value="..." attributes.
   function esc(s) {
-    return String(s ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+    return String(s ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
   }
 
   function escRegex(s) {
     return s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
   }
 
-  // Escapes text for HTML, then wraps the search term in <mark> — used for the
-  // visible columns so a hit is obvious in a long, paginated table.
+  // Wraps the search term in <mark> — used for the visible columns so a hit
+  // is obvious in a long, paginated table. The term is matched against the
+  // raw text and each piece escaped afterwards: matching on the escaped text
+  // instead would find "amp" or "lt" inside the entities themselves and cut
+  // them in half. split() with a capturing group puts the matches at the odd
+  // indices.
   function highlight(text, term) {
-    const escaped = esc(text);
-    if (!term) return escaped;
-    const re = new RegExp('(' + escRegex(esc(term)) + ')', 'ig');
-    return escaped.replace(re, '<mark>$1</mark>');
+    const raw = String(text ?? '');
+    if (!term) return esc(raw);
+    return raw.split(new RegExp('(' + escRegex(term) + ')', 'ig'))
+      .map((part, i) => (i % 2 ? '<mark>' + esc(part) + '</mark>' : esc(part)))
+      .join('');
   }
 
   const PAGE_SIZE = 25;
@@ -44,6 +78,10 @@
   // value -> checked. Rebuilt fresh on every new search; OR-filter (a rule
   // shows if at least one of its own match values is checked).
   let matchCheckState = {};
+  // Bumped by every new search. A lookup answers whenever Rulezet does, so a
+  // slow first search could otherwise land after a quicker second one and
+  // replace its results with the wrong rules under the new query's title.
+  let searchSeq = 0;
 
   // Changing a filter changes what "selected" even refers to (rows picked
   // under the old filter may no longer be visible, or may not even match the
@@ -503,7 +541,9 @@
     zsazsaShowRulezetSearchView();
     bsModal.show();
 
+    const seq = ++searchSeq;
     resultPromise.then(function (data) {
+      if (seq !== searchSeq) return;
       if (!data || !data.ok) {
         bodyEl.innerHTML = `<p class="text-danger text-center p-4 mb-0">Rulezet lookup failed: ${esc((data && data.error) || 'unknown error')}</p>`;
         return;
@@ -517,7 +557,71 @@
       populateMatchOptions();
       renderTable();
     }).catch(function (err) {
+      if (seq !== searchSeq) return;
       bodyEl.innerHTML = `<p class="text-danger text-center p-4 mb-0">Rulezet lookup did not complete: ${esc(zsazsaErrorText(err))}</p>`;
+    });
+  };
+  // The "Search Rulezet" button next to a form's detection field, searching
+  // by the MITRE ATT&CK techniques checked on that same form. The Threat actor
+  // profile and the Daily briefing forms both have one; only the element IDs,
+  // the checkbox name and the tooltip differ, so they are the options:
+  //   buttonId      the button; its wrapping span is buttonId + '-wrap'
+  //   statusId      the inline error line under the textarea
+  //   targetId      the textarea an added rule is appended to
+  //   checkboxName  name of the technique checkboxes ('mitre_attack_techniques')
+  //   readyTitle    tooltip once at least one technique is checked
+  // A wrap rendered with data-rulezet-unconfigured (RULEZET_URL is empty)
+  // keeps its button disabled and its "not configured" tooltip: no lookup
+  // could succeed, so none is wired up.
+  window.zsazsaBindRulezetAttackLookup = function (opts) {
+    var btn = document.getElementById(opts.buttonId);
+    var btnWrap = document.getElementById(opts.buttonId + '-wrap');
+    var status = document.getElementById(opts.statusId);
+    var rulesEl = document.getElementById(opts.targetId);
+    var checkboxSelector = 'input[name="' + opts.checkboxName + '"]';
+    var csrfToken = (document.querySelector('meta[name="csrf-token"]') || {}).content || '';
+    var techniqueIdRe = /\bT\d{4}(?:\.\d{3})?\b/i;
+    var emptyTitle = 'Select at least one MITRE ATT&CK technique above first.';
+
+    if (!btn || !btnWrap || btnWrap.hasAttribute('data-rulezet-unconfigured')) return;
+
+    function getTechniqueIds() {
+      var ids = [];
+      document.querySelectorAll(checkboxSelector + ':checked').forEach(function (c) {
+        var m = c.value.match(techniqueIdRe);
+        if (m && !ids.includes(m[0].toUpperCase())) ids.push(m[0].toUpperCase());
+      });
+      return ids;
+    }
+
+    function refreshButtonState() {
+      var hasTechnique = getTechniqueIds().length > 0;
+      btn.disabled = !hasTechnique;
+      btnWrap.title = hasTechnique ? opts.readyTitle : emptyTitle;
+    }
+
+    document.querySelectorAll(checkboxSelector).forEach(function (cb) {
+      cb.addEventListener('change', refreshButtonState);
+    });
+    refreshButtonState();
+
+    btn.addEventListener('click', function () {
+      var techniqueIds = getTechniqueIds();
+
+      status.style.display = 'none';
+      if (!techniqueIds.length) {
+        status.innerHTML = '<i class="fas fa-triangle-exclamation me-1"></i>' + emptyTitle;
+        status.style.display = '';
+        return;
+      }
+
+      var resultPromise = fetch(SCRIPT_ROOT + '/api/rulezet-attack-lookup', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json', 'X-CSRF-Token': csrfToken},
+        body: JSON.stringify({technique_ids: techniqueIds}),
+      }).then(zsazsaReadJson);
+
+      zsazsaRulezetSearch(resultPromise, rulesEl, techniqueIds.join(', '), 'attack');
     });
   };
 })();

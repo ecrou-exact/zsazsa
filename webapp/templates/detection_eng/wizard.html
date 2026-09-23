@@ -12,6 +12,8 @@
 
 {% macro lines(items) %}{{ (items or []) | join('\n') }}{% endmacro %}
 
+{% block head_extra %}{% include "_rulezet_assets.html" %}{% endblock %}
+
 {% block content %}
 {{ product_identity('fa-crosshairs', 'Detection engineering request',
                     der.der_id if is_edit and der else '',
@@ -84,7 +86,8 @@
       <div class="card-body">
         <div class="d-flex justify-content-between align-items-center" style="min-height:2.1rem;">
           <label class="form-label mb-0">Technique(s) this request targets</label>
-          <span id="btn-rulezet-der-lookup-wrap" title="Select at least one MITRE ATT&amp;CK technique above first.">
+          <span id="btn-rulezet-der-lookup-wrap"
+                {% if rulezet_enabled %}title="Select at least one MITRE ATT&amp;CK technique above first."{% else %}data-rulezet-unconfigured title="Rulezet is not configured: set RULEZET_URL on the Configuration page."{% endif %}>
             <button type="button" class="btn btn-sm btn-outline-primary" id="btn-rulezet-der-lookup" disabled>
               <img src="{{ url_for('static', filename='rulezet-icon.png') }}"
                    alt="" style="height:22px;vertical-align:middle;margin-right:6px;">
@@ -232,59 +235,13 @@
 {% block scripts %}
 <script>
 /* ── Detection lookup (Rulezet, by MITRE ATT&CK technique) ── */
-(function() {
-  var btn = document.getElementById('btn-rulezet-der-lookup');
-  var btnWrap = document.getElementById('btn-rulezet-der-lookup-wrap');
-  var status = document.getElementById('rulezet-der-status');
-  var rulesEl = document.getElementById('der-existing-coverage');
-  var csrfToken = (document.querySelector('meta[name="csrf-token"]') || {}).content || '';
-  var techniqueIdRe = /\bT\d{4}(?:\.\d{3})?\b/i;
-
-  if (!btn) return;
-
-  function getTechniqueIds() {
-    var checked = Array.from(document.querySelectorAll('input[name="technique"]:checked'))
-      .map(function(c) { return c.value; });
-    var ids = [];
-    checked.forEach(function(v) {
-      var m = v.match(techniqueIdRe);
-      if (m && !ids.includes(m[0].toUpperCase())) ids.push(m[0].toUpperCase());
-    });
-    return ids;
-  }
-
-  function refreshButtonState() {
-    var hasTechnique = getTechniqueIds().length > 0;
-    btn.disabled = !hasTechnique;
-    btnWrap.title = hasTechnique
-      ? 'Search Rulezet for public rules matching the technique(s) selected above'
-      : 'Select at least one MITRE ATT&CK technique above first.';
-  }
-
-  document.querySelectorAll('input[name="technique"]').forEach(function(cb) {
-    cb.addEventListener('change', refreshButtonState);
-  });
-  refreshButtonState();
-
-  btn.addEventListener('click', function() {
-    var techniqueIds = getTechniqueIds();
-
-    status.style.display = 'none';
-    if (!techniqueIds.length) {
-      status.innerHTML = '<i class="fas fa-triangle-exclamation me-1"></i>Select at least one MITRE ATT&CK technique above first.';
-      status.style.display = '';
-      return;
-    }
-
-    var resultPromise = fetch(SCRIPT_ROOT + '/api/rulezet-attack-lookup', {
-      method: 'POST',
-      headers: {'Content-Type': 'application/json', 'X-CSRF-Token': csrfToken},
-      body: JSON.stringify({technique_ids: techniqueIds}),
-    }).then(zsazsaReadJson);
-
-    zsazsaRulezetSearch(resultPromise, rulesEl, techniqueIds.join(', '), 'attack');
-  });
-})();
+zsazsaBindRulezetAttackLookup({
+  buttonId: 'btn-rulezet-der-lookup',
+  statusId: 'rulezet-der-status',
+  targetId: 'der-existing-coverage',
+  checkboxName: 'technique',
+  readyTitle: 'Search Rulezet for public rules matching the technique(s) selected above',
+});
 
 /* ── Audience validation ── */
 (function() {

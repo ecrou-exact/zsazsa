@@ -101,6 +101,10 @@ def create_app():
             "brand_company": getattr(config, "BRAND_COMPANY", ""),
             "ui_theme": getattr(config, "THEME", "overmind"),
             "current_user_email": misp_session.current_user_email(),
+            # Read per request, not at startup: the configuration page can set
+            # or clear RULEZET_URL without a restart. The "Search Rulezet"
+            # buttons stay disabled while it is empty.
+            "rulezet_enabled": bool(getattr(config, "RULEZET_URL", "")),
         }
 
     @app.template_filter("md_inline")

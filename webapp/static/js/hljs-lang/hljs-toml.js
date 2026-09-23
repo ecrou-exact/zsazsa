@@ -2,14 +2,16 @@
  * hljs-toml.js — highlight.js language definition for TOML (Elastic
  * Security detection rules).
  *
- * highlight.js ships no TOML grammar in this project's bundled
- * /static/js/hljs.min.js (confirmed — a minimal custom build, same
- * situation as hljs-yara.js/hljs-suricata.js). Registered at runtime via
- * hljs.registerLanguage(), not a CodeMirror/Prism mode.
+ * Ported from the Rulezet project (github.com/ngsoti/rulezet-core,
+ * AGPL-3.0), so a rule looks the same in zsazsa's rule viewer as on Rulezet.
+ * highlight.js ships no official grammar for it, so it is registered at
+ * runtime with hljs.registerLanguage() by rulezet-code-modal.js, which loads
+ * this file with a dynamic import() the first time a rule is shown.
  *
- * Usage:
- *   import tomlLanguage from '/static/js/components/hljs-toml.js'
- *   hljs.registerLanguage('toml', tomlLanguage)
+ * The highlight.js common build zsazsa loads from cdnjs has no real TOML
+ * grammar: it aliases "toml" to its INI mode, which knows nothing of
+ * triple-quoted strings. rulezet-code-modal.js registers this one under
+ * "toml" explicitly so it takes precedence over that alias.
  */
 export default function tomlLanguage(hljs) {
     // Triple-quoted multi-line strings (description/note/setup/query in a

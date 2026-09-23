@@ -1,15 +1,11 @@
 /**
  * hljs-suricata.js — highlight.js language definition for Suricata rules.
  *
- * highlight.js ships no official Suricata grammar (confirmed against the bundled
- * /static/js/hljs.min.js — it's a minimal custom build). Same approach as
- * hljs-yara.js: this project uses highlight.js exclusively, so this follows
- * highlight.js's own language-definition API — registered at runtime via
- * hljs.registerLanguage(), not a CodeMirror/Prism mode.
- *
- * Usage:
- *   import suricataLanguage from '/static/js/components/hljs-suricata.js'
- *   hljs.registerLanguage('suricata', suricataLanguage)
+ * Ported from the Rulezet project (github.com/ngsoti/rulezet-core,
+ * AGPL-3.0), so a rule looks the same in zsazsa's rule viewer as on Rulezet.
+ * highlight.js ships no official grammar for it, so it is registered at
+ * runtime with hljs.registerLanguage() by rulezet-code-modal.js, which loads
+ * this file with a dynamic import() the first time a rule is shown.
  */
 export default function suricataLanguage(hljs) {
     const ACTIONS = ['pass', 'drop', 'reject', 'alert']

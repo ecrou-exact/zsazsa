@@ -4,6 +4,7 @@
 {% set title_text = ('Edit ' + vea.vea_id) if is_edit else 'New vulnerability advisory' %}
 {% block title %}{{ title_text }} | zsazsa CTI{% endblock %}
 {% block page_title %}{{ title_text }}{% endblock %}
+{% block head_extra %}{% include "_rulezet_assets.html" %}{% endblock %}
 {% block topbar_actions %}
 <a href="{{ url_for('vea.review') }}" class="btn btn-sm btn-light border shadow-sm">
   <i class="fas fa-arrow-left me-1"></i> Back to list
@@ -378,7 +379,8 @@
               {# A disabled <button> is inert in every browser: it never fires the
                  hover events a native title tooltip needs. The title lives on this
                  wrapping span instead, which stays interactive either way. #}
-              <span id="btn-rulezet-lookup-wrap" title="Enter a CVE ID above first.">
+              <span id="btn-rulezet-lookup-wrap"
+                    {% if rulezet_enabled %}title="Enter a CVE ID above first."{% else %}data-rulezet-unconfigured title="Rulezet is not configured: set RULEZET_URL on the Configuration page."{% endif %}>
                 <button type="button" class="btn btn-sm btn-outline-primary" id="btn-rulezet-lookup" disabled>
                   <img src="{{ url_for('static', filename='rulezet-icon.png') }}"
                        alt="" style="height:22px;vertical-align:middle;margin-right:6px;">
@@ -970,7 +972,9 @@ function _renderCvssBadge(cvssVal) {
   var cveIdEl = document.getElementById('cve_id');
   var csrfToken = (document.querySelector('meta[name="csrf-token"]') || {}).content || '';
 
-  if (!btn) return;
+  // Rendered disabled, with a "not configured" tooltip, when RULEZET_URL is
+  // empty: leave it that way instead of enabling it once a CVE is typed.
+  if (!btn || btnWrap.hasAttribute('data-rulezet-unconfigured')) return;
 
   function getCveIds() {
     var raw = (cveIdEl.value || '').trim();

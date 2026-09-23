@@ -4,6 +4,8 @@
 {% block title %}{{ browser_title }} | zsazsa CTI{% endblock %}
 {% block page_title %}{{ page_title_text }}{% endblock %}
 
+{% block head_extra %}{% include "_rulezet_assets.html" %}{% endblock %}
+
 {% block topbar_actions %}
 <a href="{{ url_for('daily_briefing.list_briefings') }}" class="btn btn-sm btn-light border shadow-sm">
   <i class="fas fa-arrow-left me-1"></i> Back to list
@@ -532,7 +534,11 @@
         <div class="col-md-4">
           <div class="d-flex justify-content-between align-items-center" style="min-height:2.1rem;">
             <label class="form-label mb-0">Detection rules</label>
-            <span id="btn-rulezet-briefing-lookup-wrap" title="Select at least one MITRE ATT&amp;CK technique above first.">
+            {# A disabled <button> is inert in every browser: it never fires the
+               hover events a native title tooltip needs. The title lives on this
+               wrapping span instead, which stays interactive either way. #}
+            <span id="btn-rulezet-briefing-lookup-wrap"
+                  {% if rulezet_enabled %}title="Select at least one MITRE ATT&amp;CK technique above first."{% else %}data-rulezet-unconfigured title="Rulezet is not configured: set RULEZET_URL on the Configuration page."{% endif %}>
               <button type="button" class="btn btn-sm btn-outline-primary" id="btn-rulezet-briefing-lookup" disabled>
                 <img src="{{ url_for('static', filename='rulezet-icon.png') }}"
                      alt="" style="height:22px;vertical-align:middle;margin-right:6px;">
@@ -1777,59 +1783,13 @@ positionStickyColumns();
 showPane(_getStoryCards().length ? 'story-1' : 'details');
 
 /* ── Detection rule lookup (Rulezet, by MITRE ATT&CK technique) ── */
-(function() {
-  var btn = document.getElementById('btn-rulezet-briefing-lookup');
-  var btnWrap = document.getElementById('btn-rulezet-briefing-lookup-wrap');
-  var status = document.getElementById('rulezet-briefing-status');
-  var rulesEl = document.getElementById('briefing-detection-rules');
-  var csrfToken = (document.querySelector('meta[name="csrf-token"]') || {}).content || '';
-  var techniqueIdRe = /\bT\d{4}(?:\.\d{3})?\b/i;
-
-  if (!btn) return;
-
-  function getTechniqueIds() {
-    var checked = Array.from(document.querySelectorAll('input[name="mitre_attack_techniques"]:checked'))
-      .map(function(c) { return c.value; });
-    var ids = [];
-    checked.forEach(function(v) {
-      var m = v.match(techniqueIdRe);
-      if (m && !ids.includes(m[0].toUpperCase())) ids.push(m[0].toUpperCase());
-    });
-    return ids;
-  }
-
-  function refreshButtonState() {
-    var hasTechnique = getTechniqueIds().length > 0;
-    btn.disabled = !hasTechnique;
-    btnWrap.title = hasTechnique
-      ? 'Search Rulezet for public rules matching the MITRE ATT&CK techniques selected below'
-      : 'Select at least one MITRE ATT&CK technique above first.';
-  }
-
-  document.querySelectorAll('input[name="mitre_attack_techniques"]').forEach(function(cb) {
-    cb.addEventListener('change', refreshButtonState);
-  });
-  refreshButtonState();
-
-  btn.addEventListener('click', function() {
-    var techniqueIds = getTechniqueIds();
-
-    status.style.display = 'none';
-    if (!techniqueIds.length) {
-      status.innerHTML = '<i class="fas fa-triangle-exclamation me-1"></i>Select at least one MITRE ATT&CK technique above first.';
-      status.style.display = '';
-      return;
-    }
-
-    var resultPromise = fetch(SCRIPT_ROOT + '/api/rulezet-attack-lookup', {
-      method: 'POST',
-      headers: {'Content-Type': 'application/json', 'X-CSRF-Token': csrfToken},
-      body: JSON.stringify({technique_ids: techniqueIds}),
-    }).then(zsazsaReadJson);
-
-    zsazsaRulezetSearch(resultPromise, rulesEl, techniqueIds.join(', '), 'attack');
-  });
-})();
+zsazsaBindRulezetAttackLookup({
+  buttonId: 'btn-rulezet-briefing-lookup',
+  statusId: 'rulezet-briefing-status',
+  targetId: 'briefing-detection-rules',
+  checkboxName: 'mitre_attack_techniques',
+  readyTitle: 'Search Rulezet for public rules matching the MITRE ATT&CK techniques selected above',
+});
 </script>
 
 <style>
